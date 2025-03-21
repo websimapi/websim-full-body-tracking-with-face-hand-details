@@ -1,5 +1,5 @@
 import { config } from './config.js';
-import { POSE_CONNECTIONS, HAND_CONNECTIONS, FACEMESH_CONTOURS } from './app.js';
+import { POSE_CONNECTIONS, HAND_CONNECTIONS, FACEMESH_CONTOURS } from './connection-data.js';
 
 // Three.js objects
 let scene, renderer, camera3D;
