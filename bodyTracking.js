@@ -69,7 +69,7 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
         joint.position.set(
             -(landmark.x - 0.5) * 2, // x flipped and centered
             (landmark.y - 0.5) * -2, // y inverted and centered
-            (landmark.z * 2) - 0.5 // z scaled and shifted forward for better positioning
+            (landmark.z * 4) // Increased z scaling to match hand positioning
         );
         
         joint.visible = landmark.visibility > 0.5;
