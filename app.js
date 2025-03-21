@@ -3,6 +3,7 @@ import { initBodyTracking, updateBodyMesh, hideBodyMesh, POSE_CONNECTIONS } from
 import { initFaceTracking, updateFaceMesh, hideFaceMesh, FACEMESH_TESSELATION, FACEMESH_CONTOURS } from './faceTracking.js';
 import { initHandTracking, updateHandMesh, hideHandMesh, HAND_CONNECTIONS } from './handTracking.js';
 import { createBone, updateBone, createTerrain } from './utils.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // Global references to MediaPipe objects now loaded via script tags
 const Holistic = window.Holistic;
@@ -131,7 +132,7 @@ function initThreeJS() {
     });
 
     // Add orbit controls
-    const controls = new THREE.OrbitControls(camera3D, renderer.domElement);
+    const controls = new OrbitControls(camera3D, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.minDistance = 3;
