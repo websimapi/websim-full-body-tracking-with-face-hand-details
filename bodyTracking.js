@@ -14,7 +14,7 @@ export const POSE_CONNECTIONS = [
 ];
 
 // Initialize body tracking
-export function initBodyTracking(parent, THREE, config) {
+export function initBodyTracking(scene, THREE, config) {
     const bodyMesh = {
         joints: {},
         bones: {}
@@ -29,11 +29,11 @@ export function initBodyTracking(parent, THREE, config) {
     
     const jointGeometry = new THREE.SphereGeometry(config.threeJS.jointRadius, 16, 16);
     
-    // Add body joints to the parent group
+    // Add body joints to the scene (we'll position them in the update function)
     for (let i = 0; i < 33; i++) {
         const joint = new THREE.Mesh(jointGeometry, jointMaterial);
         joint.visible = false;
-        parent.add(joint);
+        scene.add(joint);
         bodyMesh.joints[i] = joint;
     }
     
@@ -49,7 +49,7 @@ export function initBodyTracking(parent, THREE, config) {
         const geometry = new THREE.CylinderGeometry(config.threeJS.boneRadius, config.threeJS.boneRadius, 1, 8);
         geometry.rotateX(Math.PI / 2);
         const bone = new THREE.Mesh(geometry, boneMaterial);
-        parent.add(bone);
+        scene.add(bone);
         bone.visible = false;
         bodyMesh.bones[connection.join('-')] = bone;
     }
@@ -64,14 +64,11 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
         const landmark = landmarks[i];
         const joint = bodyMesh.joints[i];
         
-        if (!joint) continue; // Skip if joint doesn't exist
-        
-        // Convert to 3D space, flipping coordinates as needed
-        // x is flipped to mirror the pose correctly
+        // Convert to 3D space with improved positioning
         joint.position.set(
-            -(landmark.x - 0.5) * 2, // x flipped and centered
-            (landmark.y - 0.5) * -2, // y inverted and centered
-            (landmark.z * 2) // z scaled for better visibility
+            -(landmark.x - 0.5) * 1.5,   // Less extreme x-mirroring
+            (landmark.y - 0.5) * -2.2,   // Adjusted y scale for better positioning
+            landmark.z * 1.5             // More natural depth
         );
         
         joint.visible = landmark.visibility > 0.5;
@@ -81,8 +78,6 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
     for (const connection of POSE_CONNECTIONS) {
         const [i, j] = connection;
         const bone = bodyMesh.bones[connection.join('-')];
-        
-        if (!bone || !bodyMesh.joints[i] || !bodyMesh.joints[j]) continue;
         
         const jointA = bodyMesh.joints[i];
         const jointB = bodyMesh.joints[j];

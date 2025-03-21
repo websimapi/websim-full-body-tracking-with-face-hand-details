@@ -2,8 +2,7 @@ import { config } from './config.js';
 import { initBodyTracking, updateBodyMesh, hideBodyMesh, POSE_CONNECTIONS } from './bodyTracking.js';
 import { initFaceTracking, updateFaceMesh, hideFaceMesh, FACEMESH_TESSELATION, FACEMESH_CONTOURS } from './faceTracking.js';
 import { initHandTracking, updateHandMesh, hideHandMesh, HAND_CONNECTIONS } from './handTracking.js';
-import { createBone, updateBone, createTerrain } from './utils.js';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { createBone, updateBone } from './utils.js';
 
 // Global references to MediaPipe objects now loaded via script tags
 const Holistic = window.Holistic;
@@ -34,11 +33,6 @@ let bodyMesh = {};
 let faceMesh = {};
 let leftHandMesh = {};
 let rightHandMesh = {};
-let terrain = {};
-let characterGroup;
-let previousHeadYaw = 0;
-let previousLeftWristY = 0;
-let previousRightWristY = 0;
 
 // Initialize the application
 async function init() {
@@ -92,7 +86,7 @@ function initThreeJS() {
 
     // Create camera
     camera3D = new THREE.PerspectiveCamera(75, sceneContainer.clientWidth / sceneContainer.clientHeight, 0.1, 1000);
-    camera3D.position.set(0, 2, 6);
+    camera3D.position.set(0, 0, 2);
     camera3D.lookAt(0, 0, 0);
 
     // Create renderer
@@ -107,22 +101,12 @@ function initThreeJS() {
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(0, 1, 2);
     scene.add(directionalLight);
-    
-    // Create terrain
-    terrain = createTerrain(scene, THREE, config);
-    
-    // Create character group to contain all body parts
-    characterGroup = new THREE.Group();
-    scene.add(characterGroup);
 
     // Initialize avatar meshes
-    bodyMesh = initBodyTracking(characterGroup, THREE, config);
-    faceMesh = initFaceTracking(characterGroup, THREE, config);
-    leftHandMesh = initHandTracking(characterGroup, THREE, config, 'left');
-    rightHandMesh = initHandTracking(characterGroup, THREE, config, 'right');
-    
-    // Position character on terrain
-    characterGroup.position.set(0, terrain.getHeightAt(0, 0) + 1, 0);
+    bodyMesh = initBodyTracking(scene, THREE, config);
+    faceMesh = initFaceTracking(scene, THREE, config);
+    leftHandMesh = initHandTracking(scene, THREE, config, 'left');
+    rightHandMesh = initHandTracking(scene, THREE, config, 'right');
 
     // Handle window resize
     window.addEventListener('resize', () => {
@@ -130,14 +114,6 @@ function initThreeJS() {
         camera3D.updateProjectionMatrix();
         renderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
     });
-
-    // Add orbit controls
-    const controls = new OrbitControls(camera3D, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.minDistance = 3;
-    controls.maxDistance = 15;
-    controls.maxPolarAngle = Math.PI / 2;
 
     // Start animation loop
     animate();
@@ -165,9 +141,6 @@ function updateThreeJSPose(results) {
     // Update body pose
     if (showBodyCheckbox.checked && results.poseLandmarks) {
         updateBodyMesh(results.poseLandmarks, bodyMesh, updateBone);
-        
-        // Move character based on arm movements
-        controlCharacterWithPose(results.poseLandmarks);
     } else {
         // Hide body mesh
         hideBodyMesh(bodyMesh);
@@ -176,11 +149,6 @@ function updateThreeJSPose(results) {
     // Update face
     if (showFaceCheckbox.checked && results.faceLandmarks) {
         updateFaceMesh(results.faceLandmarks, faceMesh, updateBone);
-        
-        // Rotate character based on head rotation
-        if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-            controlCharacterWithHead(results.faceLandmarks);
-        }
     } else {
         // Hide face mesh
         hideFaceMesh(faceMesh);
@@ -206,61 +174,6 @@ function updateThreeJSPose(results) {
         hideHandMesh(leftHandMesh);
         hideHandMesh(rightHandMesh);
     }
-}
-
-// Control character movement with arm positions
-function controlCharacterWithPose(landmarks) {
-    if (!landmarks || landmarks.length < 16) return;
-    
-    // Get current wrist Y positions (landmarks 15 and 16 are the wrists)
-    const leftWristY = landmarks[15].y;
-    const rightWristY = landmarks[16].y;
-    
-    // Calculate change in wrist position
-    const leftDelta = previousLeftWristY - leftWristY;
-    const rightDelta = previousRightWristY - rightWristY;
-    
-    // Store current positions for next frame
-    previousLeftWristY = leftWristY;
-    previousRightWristY = rightWristY;
-    
-    // Move forward if both arms are moving up and down in sync
-    if (Math.abs(leftDelta) > config.character.armMovementThreshold && 
-        Math.abs(rightDelta) > config.character.armMovementThreshold &&
-        Math.sign(leftDelta) === Math.sign(rightDelta)) {
-        
-        // Get direction vector from character's rotation
-        const direction = new THREE.Vector3(0, 0, -1);
-        direction.applyQuaternion(characterGroup.quaternion);
-        
-        // Move character forward
-        characterGroup.position.add(direction.multiplyScalar(config.character.moveSpeed));
-        
-        // Keep character above terrain
-        const x = characterGroup.position.x;
-        const z = characterGroup.position.z;
-        const y = terrain.getHeightAt(x, z) + 1; // +1 to keep character above ground
-        characterGroup.position.y = y;
-    }
-}
-
-// Control character rotation with head rotation
-function controlCharacterWithHead(faceLandmarks) {
-    // Calculate head yaw by comparing nose and eye positions
-    const nose = faceLandmarks[1];
-    const leftEye = faceLandmarks[33];
-    const rightEye = faceLandmarks[263];
-    
-    // Simple calculation of head rotation based on horizontal nose position
-    const headYaw = (nose.x - 0.5) * 2;
-    
-    // Only rotate if the head movement is greater than threshold
-    if (Math.abs(headYaw - previousHeadYaw) > config.character.headRotationThreshold) {
-        // Rotate character group
-        characterGroup.rotation.y -= (headYaw - previousHeadYaw) * config.character.rotationSpeed;
-    }
-    
-    previousHeadYaw = headYaw;
 }
 
 // Process and visualize the tracking results
