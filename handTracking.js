@@ -1,15 +1,36 @@
-import { HAND_CONNECTIONS } from './app.js';
-import { createBone, updateBone } from './utils.js';
+/**
+ * Hand tracking module for 3D visualization
+ */
 
-export function initHandTracking(scene, config, handType) {
+// Constants for hand landmark connections
+export const HAND_CONNECTIONS = [
+    // Thumb
+    [0, 1], [1, 2], [2, 3], [3, 4],
+    // Index finger
+    [0, 5], [5, 6], [6, 7], [7, 8],
+    // Middle finger
+    [0, 9], [9, 10], [10, 11], [11, 12],
+    // Ring finger
+    [0, 13], [13, 14], [14, 15], [15, 16],
+    // Pinky
+    [0, 17], [17, 18], [18, 19], [19, 20],
+    // Palm
+    [0, 17], [5, 9], [9, 13], [13, 17]
+];
+
+// Initialize hand tracking
+export function initHandTracking(scene, THREE, config, side) {
     const handMesh = {
         landmarks: {},
         connections: {}
     };
     
-    const material = new THREE.MeshStandardMaterial({ 
-        color: handType === 'left' ? config.threeJS.leftHandColor : config.threeJS.rightHandColor,
-        emissive: handType === 'left' ? config.threeJS.leftHandColor : config.threeJS.rightHandColor,
+    const isLeft = side === 'left';
+    const colorKey = isLeft ? 'leftHandColor' : 'rightHandColor';
+    
+    const handMaterial = new THREE.MeshStandardMaterial({ 
+        color: config.threeJS[colorKey],
+        emissive: config.threeJS[colorKey],
         emissiveIntensity: 0.3
     });
     
@@ -17,21 +38,27 @@ export function initHandTracking(scene, config, handType) {
     
     // Create hand joints
     for (let i = 0; i < 21; i++) {
-        const joint = new THREE.Mesh(jointGeometry, material);
+        const joint = new THREE.Mesh(jointGeometry, handMaterial);
         joint.visible = false;
         scene.add(joint);
         handMesh.landmarks[i] = joint;
     }
     
     // Create hand connections
-    const connectorMaterial = new THREE.MeshStandardMaterial({ 
-        color: handType === 'left' ? config.threeJS.leftHandColor : config.threeJS.rightHandColor,
-        emissive: handType === 'left' ? config.threeJS.leftHandColor : config.threeJS.rightHandColor,
+    const handConnectorMaterial = new THREE.MeshStandardMaterial({ 
+        color: config.threeJS[colorKey],
+        emissive: config.threeJS[colorKey],
         emissiveIntensity: 0.2
     });
     
     for (const connection of HAND_CONNECTIONS) {
-        const bone = createBone(connectorMaterial, config.threeJS.boneRadius * 0.5);
+        const geometry = new THREE.CylinderGeometry(
+            config.threeJS.boneRadius * 0.5, 
+            config.threeJS.boneRadius * 0.5, 
+            1, 8
+        );
+        geometry.rotateX(Math.PI / 2);
+        const bone = new THREE.Mesh(geometry, handConnectorMaterial);
         scene.add(bone);
         bone.visible = false;
         handMesh.connections[connection.join('-')] = bone;
@@ -40,7 +67,8 @@ export function initHandTracking(scene, config, handType) {
     return handMesh;
 }
 
-export function updateHandMesh(handMesh, landmarks) {
+// Update hand mesh with new landmark data
+export function updateHandMesh(landmarks, handMesh, updateBoneFn) {
     // Update hand landmarks
     for (let i = 0; i < landmarks.length; i++) {
         const landmark = landmarks[i];
@@ -61,11 +89,12 @@ export function updateHandMesh(handMesh, landmarks) {
         const [i, j] = connection;
         const bone = handMesh.connections[connection.join('-')];
         
-        updateBone(bone, handMesh.landmarks[i].position, handMesh.landmarks[j].position);
+        updateBoneFn(bone, handMesh.landmarks[i].position, handMesh.landmarks[j].position);
         bone.visible = true;
     }
 }
 
+// Hide hand mesh
 export function hideHandMesh(handMesh) {
     // Hide all hand landmarks and connections
     for (const key in handMesh.landmarks) {

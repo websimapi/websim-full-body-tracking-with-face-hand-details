@@ -1,7 +1,8 @@
 import { config } from './config.js';
-import { initBodyTracking, updateBodyMesh, hideBodyMesh } from './bodyTracking.js';
-import { initFaceTracking, updateFaceMesh, hideFaceMesh } from './faceTracking.js';
-import { initHandTracking, updateHandMesh, hideHandMesh } from './handTracking.js';
+import { initBodyTracking, updateBodyMesh, hideBodyMesh, POSE_CONNECTIONS } from './bodyTracking.js';
+import { initFaceTracking, updateFaceMesh, hideFaceMesh, FACEMESH_TESSELATION, FACEMESH_CONTOURS } from './faceTracking.js';
+import { initHandTracking, updateHandMesh, hideHandMesh, HAND_CONNECTIONS } from './handTracking.js';
+import { createBone, updateBone } from './utils.js';
 
 // Global references to MediaPipe objects now loaded via script tags
 const Holistic = window.Holistic;
@@ -101,11 +102,11 @@ function initThreeJS() {
     directionalLight.position.set(0, 1, 2);
     scene.add(directionalLight);
 
-    // Initialize tracking meshes
-    bodyMesh = initBodyTracking(scene, config);
-    faceMesh = initFaceTracking(scene, config);
-    leftHandMesh = initHandTracking(scene, config, 'left');
-    rightHandMesh = initHandTracking(scene, config, 'right');
+    // Initialize avatar meshes
+    bodyMesh = initBodyTracking(scene, THREE, config);
+    faceMesh = initFaceTracking(scene, THREE, config);
+    leftHandMesh = initHandTracking(scene, THREE, config, 'left');
+    rightHandMesh = initHandTracking(scene, THREE, config, 'right');
 
     // Handle window resize
     window.addEventListener('resize', () => {
@@ -139,7 +140,7 @@ function resizeCanvasToDisplaySize() {
 function updateThreeJSPose(results) {
     // Update body pose
     if (showBodyCheckbox.checked && results.poseLandmarks) {
-        updateBodyMesh(bodyMesh, results.poseLandmarks);
+        updateBodyMesh(results.poseLandmarks, bodyMesh, updateBone);
     } else {
         // Hide body mesh
         hideBodyMesh(bodyMesh);
@@ -147,7 +148,7 @@ function updateThreeJSPose(results) {
     
     // Update face
     if (showFaceCheckbox.checked && results.faceLandmarks) {
-        updateFaceMesh(faceMesh, results.faceLandmarks);
+        updateFaceMesh(results.faceLandmarks, faceMesh, updateBone);
     } else {
         // Hide face mesh
         hideFaceMesh(faceMesh);
@@ -157,14 +158,14 @@ function updateThreeJSPose(results) {
     if (showHandsCheckbox.checked) {
         // Update left hand
         if (results.leftHandLandmarks) {
-            updateHandMesh(leftHandMesh, results.leftHandLandmarks);
+            updateHandMesh(results.leftHandLandmarks, leftHandMesh, updateBone);
         } else {
             hideHandMesh(leftHandMesh);
         }
         
         // Update right hand
         if (results.rightHandLandmarks) {
-            updateHandMesh(rightHandMesh, results.rightHandLandmarks);
+            updateHandMesh(results.rightHandLandmarks, rightHandMesh, updateBone);
         } else {
             hideHandMesh(rightHandMesh);
         }
@@ -259,53 +260,6 @@ function onResults(results) {
         }
     }
 }
-
-// Constants for landmark connections
-export const POSE_CONNECTIONS = [
-    // Face
-    [0, 1], [1, 2], [2, 3], [3, 7], [0, 4], [4, 5], [5, 6], [6, 8],
-    // Upper body
-    [9, 10], [11, 12], [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19], 
-    [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20], [11, 23], [12, 24], 
-    [23, 24], [23, 25], [24, 26], [25, 27], [26, 28], [27, 29], [28, 30], [29, 31], 
-    [30, 32], [27, 31], [28, 32]
-];
-
-export const FACEMESH_TESSELATION = [
-    // A subset of the full mesh connections
-    [127, 34], [34, 139], [139, 127], [11, 0], [0, 37], [37, 11], 
-    [232, 231], [231, 120], [120, 232], [72, 37], [37, 39], [39, 72],
-    [128, 121], [121, 47], [47, 128], [232, 121], [121, 128], [128, 232],
-    [104, 69], [69, 67], [67, 104], [175, 152], [152, 157], [157, 175],
-    [36, 142], [142, 70], [70, 36], [124, 46], [46, 91], [91, 124],
-    // Simplified for brevity
-];
-
-export const FACEMESH_CONTOURS = [
-    // Face oval
-    [10, 338], [338, 297], [297, 332], [332, 284], [284, 251], [251, 389], 
-    [389, 356], [356, 454], [454, 323], [323, 361], [361, 288], [288, 397], 
-    [397, 365], [365, 379], [379, 378], [378, 400], [400, 377], [377, 152], 
-    [152, 148], [148, 176], [176, 149], [149, 150], [150, 136], [136, 172], 
-    [172, 58], [58, 132], [132, 93], [93, 234], [234, 127], [127, 162], 
-    [162, 21], [21, 54], [54, 103], [103, 67], [67, 109], [109, 10],
-    // Simplified for brevity
-];
-
-export const HAND_CONNECTIONS = [
-    // Thumb
-    [0, 1], [1, 2], [2, 3], [3, 4],
-    // Index finger
-    [0, 5], [5, 6], [6, 7], [7, 8],
-    // Middle finger
-    [0, 9], [9, 10], [10, 11], [11, 12],
-    // Ring finger
-    [0, 13], [13, 14], [14, 15], [15, 16],
-    // Pinky
-    [0, 17], [17, 18], [18, 19], [19, 20],
-    // Palm
-    [0, 17], [5, 9], [9, 13], [13, 17]
-];
 
 // Initialize the app when the page loads
 window.addEventListener('DOMContentLoaded', init);

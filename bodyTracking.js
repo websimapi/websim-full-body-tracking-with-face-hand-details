@@ -1,7 +1,20 @@
-import { POSE_CONNECTIONS } from './app.js';
-import { createBone, updateBone } from './utils.js';
+/**
+ * Body tracking module for 3D visualization
+ */
 
-export function initBodyTracking(scene, config) {
+// Constants for body landmark connections
+export const POSE_CONNECTIONS = [
+    // Face
+    [0, 1], [1, 2], [2, 3], [3, 7], [0, 4], [4, 5], [5, 6], [6, 8],
+    // Upper body
+    [9, 10], [11, 12], [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19], 
+    [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20], [11, 23], [12, 24], 
+    [23, 24], [23, 25], [24, 26], [25, 27], [26, 28], [27, 29], [28, 30], [29, 31], 
+    [30, 32], [27, 31], [28, 32]
+];
+
+// Initialize body tracking
+export function initBodyTracking(scene, THREE, config) {
     const bodyMesh = {
         joints: {},
         bones: {}
@@ -33,7 +46,9 @@ export function initBodyTracking(scene, config) {
     
     // Create bones for pose connections
     for (const connection of POSE_CONNECTIONS) {
-        const bone = createBone(boneMaterial, config.threeJS.boneRadius);
+        const geometry = new THREE.CylinderGeometry(config.threeJS.boneRadius, config.threeJS.boneRadius, 1, 8);
+        geometry.rotateX(Math.PI / 2);
+        const bone = new THREE.Mesh(geometry, boneMaterial);
         scene.add(bone);
         bone.visible = false;
         bodyMesh.bones[connection.join('-')] = bone;
@@ -42,7 +57,8 @@ export function initBodyTracking(scene, config) {
     return bodyMesh;
 }
 
-export function updateBodyMesh(bodyMesh, landmarks) {
+// Update body mesh with new pose data
+export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
     // Scale and position the joints based on the landmarks
     for (let i = 0; i < landmarks.length; i++) {
         const landmark = landmarks[i];
@@ -69,7 +85,7 @@ export function updateBodyMesh(bodyMesh, landmarks) {
         
         // Only show bones if both joints are visible
         if (jointA.visible && jointB.visible) {
-            updateBone(bone, jointA.position, jointB.position);
+            updateBoneFn(bone, jointA.position, jointB.position);
             bone.visible = true;
         } else {
             bone.visible = false;
@@ -77,6 +93,7 @@ export function updateBodyMesh(bodyMesh, landmarks) {
     }
 }
 
+// Hide body mesh
 export function hideBodyMesh(bodyMesh) {
     // Hide all body joints and bones
     for (const key in bodyMesh.joints) {

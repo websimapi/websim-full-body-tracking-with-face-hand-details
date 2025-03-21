@@ -1,6 +1,8 @@
-// Utility functions shared across tracking modules
+/**
+ * Utility functions for 3D visualization
+ */
 
-// Helper function to create a bone (cylinder) between joints
+// Create a bone (cylinder) between joints
 export function createBone(material, radius) {
     // Create a cylinder for the bone
     const geometry = new THREE.CylinderGeometry(radius, radius, 1, 8);
@@ -10,6 +12,7 @@ export function createBone(material, radius) {
     return bone;
 }
 
+// Update bone position and orientation
 export function updateBone(bone, startPos, endPos) {
     // Position
     const midpoint = new THREE.Vector3().addVectors(startPos, endPos).multiplyScalar(0.5);
