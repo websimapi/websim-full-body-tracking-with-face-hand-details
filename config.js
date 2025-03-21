@@ -55,6 +55,6 @@ export const config = {
         jointRadius: 0.03,
         boneRadius: 0.015,
         background: 0x1a1a1a,
-        depthScaling: 4
+        armAdjustFactor: 0.05 // Add adjustment factor for better arm-hand alignment
     }
 };

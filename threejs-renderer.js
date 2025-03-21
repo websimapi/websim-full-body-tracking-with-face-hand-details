@@ -1,5 +1,5 @@
 import { config } from './config.js';
-import { POSE_CONNECTIONS, HAND_CONNECTIONS, FACEMESH_CONTOURS } from './connection-data.js';
+const THREE = window.THREE;
 
 // Three.js objects
 let scene, renderer, camera3D;
@@ -7,23 +7,61 @@ let bodyMesh = {};
 let faceMesh = {};
 let leftHandMesh = {};
 let rightHandMesh = {};
-const THREE = window.THREE;
+
+// Constants for landmark connections
+// POSE_CONNECTIONS for body pose
+const POSE_CONNECTIONS = [
+    // Face
+    [0, 1], [1, 2], [2, 3], [3, 7], [0, 4], [4, 5], [5, 6], [6, 8],
+    // Upper body
+    [9, 10], [11, 12], [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19], 
+    [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20], [11, 23], [12, 24], 
+    [23, 24], [23, 25], [24, 26], [25, 27], [26, 28], [27, 29], [28, 30], [29, 31], 
+    [30, 32], [27, 31], [28, 32]
+];
+
+// FACEMESH_CONTOURS for face contours
+const FACEMESH_CONTOURS = [
+    // Face oval
+    [10, 338], [338, 297], [297, 332], [332, 284], [284, 251], [251, 389], 
+    [389, 356], [356, 454], [454, 323], [323, 361], [361, 288], [288, 397], 
+    [397, 365], [365, 379], [379, 378], [378, 400], [400, 377], [377, 152], 
+    [152, 148], [148, 176], [176, 149], [149, 150], [150, 136], [136, 172], 
+    [172, 58], [58, 132], [132, 93], [93, 234], [234, 127], [127, 162], 
+    [162, 21], [21, 54], [54, 103], [103, 67], [67, 109], [109, 10],
+];
+
+// HAND_CONNECTIONS for hand landmarks
+const HAND_CONNECTIONS = [
+    // Thumb
+    [0, 1], [1, 2], [2, 3], [3, 4],
+    // Index finger
+    [0, 5], [5, 6], [6, 7], [7, 8],
+    // Middle finger
+    [0, 9], [9, 10], [10, 11], [11, 12],
+    // Ring finger
+    [0, 13], [13, 14], [14, 15], [15, 16],
+    // Pinky
+    [0, 17], [17, 18], [18, 19], [19, 20],
+    // Palm
+    [0, 17], [5, 9], [9, 13], [13, 17]
+];
 
 // Initialize Three.js scene
-export function initThreeJS(container) {
+function initThreeJS(sceneContainer) {
     // Create scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(config.threeJS.background);
 
     // Create camera
-    camera3D = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera3D = new THREE.PerspectiveCamera(75, sceneContainer.clientWidth / sceneContainer.clientHeight, 0.1, 1000);
     camera3D.position.set(0, 0, 2);
     camera3D.lookAt(0, 0, 0);
 
     // Create renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    container.appendChild(renderer.domElement);
+    renderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
+    sceneContainer.appendChild(renderer.domElement);
 
     // Add lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -40,15 +78,13 @@ export function initThreeJS(container) {
 
     // Handle window resize
     window.addEventListener('resize', () => {
-        camera3D.aspect = container.clientWidth / container.clientHeight;
+        camera3D.aspect = sceneContainer.clientWidth / sceneContainer.clientHeight;
         camera3D.updateProjectionMatrix();
-        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
     });
 
     // Start animation loop
     animate();
-    
-    return scene;
 }
 
 function createBodyMesh() {
@@ -207,10 +243,10 @@ function animate() {
 }
 
 // Update the 3D scene with new pose data
-export function updateThreeJSPose(results, showBody, showFace, showHands) {
+function updateThreeJSPose(results, showBody, showFace, showHands) {
     // Update body pose
     if (showBody && results.poseLandmarks) {
-        updateBodyMesh(results.poseLandmarks);
+        updateBodyMesh(results.poseLandmarks, results.leftHandLandmarks, results.rightHandLandmarks);
     } else {
         // Hide body mesh
         hideBodyMesh();
@@ -246,8 +282,9 @@ export function updateThreeJSPose(results, showBody, showFace, showHands) {
     }
 }
 
-function updateBodyMesh(landmarks) {
-    // Scale and position the joints based on the landmarks
+// Improved method to better align arm bones with hands
+function updateBodyMesh(landmarks, leftHandLandmarks, rightHandLandmarks) {
+    // First position all body joints
     for (let i = 0; i < landmarks.length; i++) {
         const landmark = landmarks[i];
         const joint = bodyMesh.joints[i];
@@ -256,13 +293,51 @@ function updateBodyMesh(landmarks) {
         joint.position.set(
             -(landmark.x - 0.5) * 2, // x flipped and centered
             (landmark.y - 0.5) * -2, // y inverted and centered
-            (landmark.z * 4) // z scaled for better visibility - increased scaling factor
+            (landmark.z * 2) // z scaled for better visibility
         );
         
         joint.visible = landmark.visibility > 0.5;
     }
     
-    // Update bones between joints
+    // Special handling for wrist joints if hands are detected
+    // This ensures better alignment between arms and hands
+    if (leftHandLandmarks && leftHandLandmarks.length > 0 && bodyMesh.joints[15].visible) {
+        // Left wrist (joint 15) should align with hand base (0)
+        const wristJoint = bodyMesh.joints[15];
+        const handBase = new THREE.Vector3(
+            -(leftHandLandmarks[0].x - 0.5) * 2,
+            (leftHandLandmarks[0].y - 0.5) * -2,
+            (leftHandLandmarks[0].z * 2)
+        );
+        
+        // Adjust the wrist position for smoother connection
+        wristJoint.position.lerp(handBase, config.threeJS.armAdjustFactor);
+        
+        // Also adjust elbow position (joint 13) to create a natural arm posture
+        const elbowToWrist = new THREE.Vector3().subVectors(wristJoint.position, bodyMesh.joints[13].position);
+        elbowToWrist.multiplyScalar(config.threeJS.armAdjustFactor * 0.5);
+        bodyMesh.joints[13].position.add(elbowToWrist);
+    }
+    
+    if (rightHandLandmarks && rightHandLandmarks.length > 0 && bodyMesh.joints[16].visible) {
+        // Right wrist (joint 16) should align with hand base (0)
+        const wristJoint = bodyMesh.joints[16];
+        const handBase = new THREE.Vector3(
+            -(rightHandLandmarks[0].x - 0.5) * 2,
+            (rightHandLandmarks[0].y - 0.5) * -2,
+            (rightHandLandmarks[0].z * 2)
+        );
+        
+        // Adjust the wrist position for smoother connection
+        wristJoint.position.lerp(handBase, config.threeJS.armAdjustFactor);
+        
+        // Also adjust elbow position (joint 14) to create a natural arm posture
+        const elbowToWrist = new THREE.Vector3().subVectors(wristJoint.position, bodyMesh.joints[14].position);
+        elbowToWrist.multiplyScalar(config.threeJS.armAdjustFactor * 0.5);
+        bodyMesh.joints[14].position.add(elbowToWrist);
+    }
+    
+    // Now update all bones between joints with potentially adjusted positions
     for (const connection of POSE_CONNECTIONS) {
         const [i, j] = connection;
         const bone = bodyMesh.bones[connection.join('-')];
@@ -281,7 +356,7 @@ function updateBodyMesh(landmarks) {
 }
 
 function updateFaceMesh(landmarks) {
-    if (!landmarks) return;
+    if (!landmarks || landmarks.length === 0) return;
     
     // Update face landmarks
     for (let i = 0; i < landmarks.length; i++) {
@@ -290,11 +365,11 @@ function updateFaceMesh(landmarks) {
         const landmark = landmarks[i];
         const joint = faceMesh.landmarks[i];
         
-        // Position face landmarks in 3D space with increased z scaling
+        // Position face landmarks in 3D space
         joint.position.set(
             -(landmark.x - 0.5) * 2, 
             (landmark.y - 0.5) * -2, 
-            (landmark.z * 4) // Increased z scaling to match body
+            (landmark.z * 2)
         );
         
         joint.visible = true;
@@ -318,11 +393,11 @@ function updateHandMesh(landmarks, handMesh) {
         const landmark = landmarks[i];
         const joint = handMesh.landmarks[i];
         
-        // Position hand landmarks in 3D space with increased z scaling
+        // Position hand landmarks in 3D space
         joint.position.set(
             -(landmark.x - 0.5) * 2, 
             (landmark.y - 0.5) * -2, 
-            (landmark.z * 4) // Increased z scaling to match body
+            (landmark.z * 2)
         );
         
         joint.visible = true;
@@ -343,10 +418,10 @@ function updateBone(bone, startPos, endPos) {
     const midpoint = new THREE.Vector3().addVectors(startPos, endPos).multiplyScalar(0.5);
     bone.position.copy(midpoint);
     
-    // Orientation - make the bone point toward the end position
+    // Orientation
     bone.lookAt(endPos);
     
-    // Scale - length scaled to match the distance between joints
+    // Scale
     const length = startPos.distanceTo(endPos);
     bone.scale.set(1, 1, length);
 }
@@ -383,3 +458,8 @@ function hideHandMesh(handMesh) {
         handMesh.connections[key].visible = false;
     }
 }
+
+export { 
+    initThreeJS, 
+    updateThreeJSPose
+};
