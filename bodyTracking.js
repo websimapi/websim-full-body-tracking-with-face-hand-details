@@ -66,9 +66,9 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
         
         // Convert to 3D space with improved positioning
         joint.position.set(
-            -(landmark.x - 0.5) * 1.5,   // Less extreme x-mirroring
-            (landmark.y - 0.5) * -2.2,   // Adjusted y scale for better positioning
-            landmark.z * 1.5             // More natural depth
+            -(landmark.x - 0.5) * 2,     // Wider x-range for more accurate mirroring
+            (landmark.y - 0.5) * -2.5,   // Increased y scale for better vertical positioning
+            landmark.z * 2               // Enhanced depth scaling for more natural 3D appearance
         );
         
         joint.visible = landmark.visibility > 0.5;

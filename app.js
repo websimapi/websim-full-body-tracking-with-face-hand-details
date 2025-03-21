@@ -84,9 +84,9 @@ function initThreeJS() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(config.threeJS.background);
 
-    // Create camera
+    // Create camera with adjusted position for better viewing angle
     camera3D = new THREE.PerspectiveCamera(75, sceneContainer.clientWidth / sceneContainer.clientHeight, 0.1, 1000);
-    camera3D.position.set(0, 0, 2);
+    camera3D.position.set(0, 0, 3);  // Moved back to see full body better
     camera3D.lookAt(0, 0, 0);
 
     // Create renderer
