@@ -54,7 +54,6 @@ export const config = {
         rightHandColor: 0x00d9e7,
         jointRadius: 0.03,
         boneRadius: 0.015,
-        background: 0x1a1a1a,
-        armAdjustFactor: 0.05 // Add adjustment factor for better arm-hand alignment
+        background: 0x1a1a1a
     }
 };
