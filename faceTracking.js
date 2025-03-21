@@ -28,7 +28,8 @@ export const FACEMESH_CONTOURS = [
 export function initFaceTracking(scene, THREE, config) {
     const faceMesh = {
         landmarks: {},
-        connections: {}
+        connections: {},
+        previousPositions: {} // Store previous positions for smoothing
     };
     
     const faceMaterial = new THREE.MeshStandardMaterial({ 
@@ -71,7 +72,7 @@ export function initFaceTracking(scene, THREE, config) {
 }
 
 // Update face mesh with new landmark data
-export function updateFaceMesh(landmarks, faceMesh, updateBoneFn, smoothingEnabled = true, smoothingFactor = 0.7) {
+export function updateFaceMesh(landmarks, faceMesh, updateBoneFn, smoothingFactor = 0) {
     // Update face landmarks
     for (let i = 0; i < landmarks.length; i++) {
         if (!faceMesh.landmarks[i]) continue; // Skip if landmark doesn't exist in our mesh
@@ -79,25 +80,30 @@ export function updateFaceMesh(landmarks, faceMesh, updateBoneFn, smoothingEnabl
         const landmark = landmarks[i];
         const joint = faceMesh.landmarks[i];
         
-        // Calculate new position in 3D space
+        // Position face landmarks in 3D space
         const newPosition = new THREE.Vector3(
             -(landmark.x - 0.5) * 2, 
             (landmark.y - 0.5) * -2, 
             (landmark.z * 2)
         );
         
-        // Apply smoothing if enabled
-        if (smoothingEnabled && joint.userData && joint.userData.prevPosition) {
-            joint.position.copy(smoothPosition(joint.userData.prevPosition, newPosition, smoothingFactor));
+        // Apply position smoothing if enabled
+        let smoothedPosition;
+        if (smoothingFactor > 0 && faceMesh.previousPositions[i]) {
+            smoothedPosition = new THREE.Vector3().lerpVectors(
+                newPosition,
+                faceMesh.previousPositions[i],
+                smoothingFactor
+            );
         } else {
-            joint.position.copy(newPosition);
+            smoothedPosition = newPosition;
         }
         
-        // Store current position for next frame's smoothing
-        if (!joint.userData) {
-            joint.userData = {};
-        }
-        joint.userData.prevPosition = joint.position.clone();
+        // Update the joint position
+        joint.position.copy(smoothedPosition);
+        
+        // Store this position for next frame's smoothing
+        faceMesh.previousPositions[i] = smoothedPosition.clone();
         
         joint.visible = true;
     }
@@ -126,13 +132,4 @@ export function hideFaceMesh(faceMesh) {
     for (const key in faceMesh.connections) {
         faceMesh.connections[key].visible = false;
     }
-}
-
-// Helper function for smoothing
-function smoothPosition(prevPosition, newPosition, smoothingFactor) {
-    return new THREE.Vector3(
-        prevPosition.x * smoothingFactor + newPosition.x * (1 - smoothingFactor),
-        prevPosition.y * smoothingFactor + newPosition.y * (1 - smoothingFactor),
-        prevPosition.z * smoothingFactor + newPosition.z * (1 - smoothingFactor)
-    );
 }

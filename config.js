@@ -42,11 +42,7 @@ export const config = {
     // Smoothing settings
     smoothing: {
         enabled: true,
-        factor: {
-            body: 0.8,
-            face: 0.7,
-            hand: 0.75
-        }
+        factor: 0.5, // Default smoothing factor (0.0 = no smoothing, 1.0 = maximum smoothing)
     },
     
     // Camera settings

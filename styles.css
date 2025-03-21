@@ -82,6 +82,31 @@ h1 {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+.slider-control {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+}
+
+.slider-control label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.slider-control input {
+    width: 100%;
+    margin-top: 5px;
+}
+
+.slider-value {
+    font-weight: bold;
+    color: #03a9f4;
+    min-width: 50px;
+    text-align: right;
+}
+
 .toggle-group {
     display: flex;
     flex-wrap: wrap;

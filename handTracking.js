@@ -22,7 +22,8 @@ export const HAND_CONNECTIONS = [
 export function initHandTracking(scene, THREE, config, side) {
     const handMesh = {
         landmarks: {},
-        connections: {}
+        connections: {},
+        previousPositions: {} // Store previous positions for smoothing
     };
     
     const isLeft = side === 'left';
@@ -68,34 +69,36 @@ export function initHandTracking(scene, THREE, config, side) {
 }
 
 // Update hand mesh with new landmark data
-export function updateHandMesh(landmarks, handMesh, updateBoneFn, smoothingEnabled = true, smoothingFactor = 0.75) {
+export function updateHandMesh(landmarks, handMesh, updateBoneFn, smoothingFactor = 0) {
     // Update hand landmarks
     for (let i = 0; i < landmarks.length; i++) {
         const landmark = landmarks[i];
         const joint = handMesh.landmarks[i];
         
-        // Calculate new position in 3D space
+        // Position hand landmarks in 3D space
         const newPosition = new THREE.Vector3(
             -(landmark.x - 0.5) * 2, 
             (landmark.y - 0.5) * -2, 
             (landmark.z * 2)
         );
         
-        // Apply smoothing if enabled
-        if (smoothingEnabled && joint.userData && joint.userData.prevPosition) {
-            if (!joint.userData.prevPosition) {
-                joint.userData.prevPosition = new THREE.Vector3();
-            }
-            joint.position.copy(smoothPosition(joint.userData.prevPosition, newPosition, smoothingFactor));
+        // Apply position smoothing if enabled
+        let smoothedPosition;
+        if (smoothingFactor > 0 && handMesh.previousPositions[i]) {
+            smoothedPosition = new THREE.Vector3().lerpVectors(
+                newPosition,
+                handMesh.previousPositions[i],
+                smoothingFactor
+            );
         } else {
-            joint.position.copy(newPosition);
+            smoothedPosition = newPosition;
         }
         
-        // Store current position for next frame's smoothing
-        if (!joint.userData) {
-            joint.userData = {};
-        }
-        joint.userData.prevPosition = joint.position.clone();
+        // Update the joint position
+        joint.position.copy(smoothedPosition);
+        
+        // Store this position for next frame's smoothing
+        handMesh.previousPositions[i] = smoothedPosition.clone();
         
         joint.visible = true;
     }
@@ -108,11 +111,6 @@ export function updateHandMesh(landmarks, handMesh, updateBoneFn, smoothingEnabl
         updateBoneFn(bone, handMesh.landmarks[i].position, handMesh.landmarks[j].position);
         bone.visible = true;
     }
-}
-
-// Function to smooth position
-function smoothPosition(prevPosition, newPosition, smoothingFactor) {
-    return prevPosition.multiplyScalar(smoothingFactor).add(newPosition.multiplyScalar(1 - smoothingFactor));
 }
 
 // Hide hand mesh

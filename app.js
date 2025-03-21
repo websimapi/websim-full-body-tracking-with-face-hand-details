@@ -2,7 +2,7 @@ import { config } from './config.js';
 import { initBodyTracking, updateBodyMesh, hideBodyMesh, POSE_CONNECTIONS } from './bodyTracking.js';
 import { initFaceTracking, updateFaceMesh, hideFaceMesh, FACEMESH_TESSELATION, FACEMESH_CONTOURS } from './faceTracking.js';
 import { initHandTracking, updateHandMesh, hideHandMesh, HAND_CONNECTIONS } from './handTracking.js';
-import { createBone, updateBone, smoothPosition } from './utils.js';
+import { createBone, updateBone } from './utils.js';
 
 // Global references to MediaPipe objects now loaded via script tags
 const Holistic = window.Holistic;
@@ -22,6 +22,10 @@ const sceneContainer = document.getElementById('scene-container');
 const showBodyCheckbox = document.getElementById('show-body');
 const showFaceCheckbox = document.getElementById('show-face');
 const showHandsCheckbox = document.getElementById('show-hands');
+
+// Smoothing slider
+const smoothingSlider = document.getElementById('smoothing-slider');
+const smoothingValueDisplay = document.getElementById('smoothing-value');
 
 // Tracking state
 let holistic;
@@ -70,6 +74,17 @@ async function init() {
         
         // Resize canvas to match video dimensions
         resizeCanvasToDisplaySize();
+        
+        // Set up smoothing slider
+        smoothingSlider.addEventListener('input', function() {
+            const value = this.value;
+            config.smoothing.factor = value / 100;
+            smoothingValueDisplay.textContent = `${value}%`;
+        });
+        
+        // Initialize slider with config value
+        smoothingSlider.value = config.smoothing.factor * 100;
+        smoothingValueDisplay.textContent = `${smoothingSlider.value}%`;
         
         statusElement.textContent = "Tracking active";
     } catch (error) {
@@ -138,15 +153,12 @@ function resizeCanvasToDisplaySize() {
 
 // Update the 3D scene with new pose data
 function updateThreeJSPose(results) {
+    // Get current smoothing factor from config
+    const smoothingFactor = config.smoothing.enabled ? config.smoothing.factor : 0;
+    
     // Update body pose
     if (showBodyCheckbox.checked && results.poseLandmarks) {
-        updateBodyMesh(
-            results.poseLandmarks, 
-            bodyMesh, 
-            updateBone, 
-            config.smoothing.enabled, 
-            config.smoothing.factor.body
-        );
+        updateBodyMesh(results.poseLandmarks, bodyMesh, updateBone, smoothingFactor);
     } else {
         // Hide body mesh
         hideBodyMesh(bodyMesh);
@@ -154,13 +166,7 @@ function updateThreeJSPose(results) {
     
     // Update face
     if (showFaceCheckbox.checked && results.faceLandmarks) {
-        updateFaceMesh(
-            results.faceLandmarks, 
-            faceMesh, 
-            updateBone,
-            config.smoothing.enabled, 
-            config.smoothing.factor.face
-        );
+        updateFaceMesh(results.faceLandmarks, faceMesh, updateBone, smoothingFactor);
     } else {
         // Hide face mesh
         hideFaceMesh(faceMesh);
@@ -170,26 +176,14 @@ function updateThreeJSPose(results) {
     if (showHandsCheckbox.checked) {
         // Update left hand
         if (results.leftHandLandmarks) {
-            updateHandMesh(
-                results.leftHandLandmarks, 
-                leftHandMesh, 
-                updateBone,
-                config.smoothing.enabled, 
-                config.smoothing.factor.hand
-            );
+            updateHandMesh(results.leftHandLandmarks, leftHandMesh, updateBone, smoothingFactor);
         } else {
             hideHandMesh(leftHandMesh);
         }
         
         // Update right hand
         if (results.rightHandLandmarks) {
-            updateHandMesh(
-                results.rightHandLandmarks, 
-                rightHandMesh, 
-                updateBone,
-                config.smoothing.enabled, 
-                config.smoothing.factor.hand
-            );
+            updateHandMesh(results.rightHandLandmarks, rightHandMesh, updateBone, smoothingFactor);
         } else {
             hideHandMesh(rightHandMesh);
         }

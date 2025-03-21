@@ -17,7 +17,8 @@ export const POSE_CONNECTIONS = [
 export function initBodyTracking(scene, THREE, config) {
     const bodyMesh = {
         joints: {},
-        bones: {}
+        bones: {},
+        previousPositions: {} // Store previous positions for smoothing
     };
     
     // Create a material for body joints
@@ -35,7 +36,6 @@ export function initBodyTracking(scene, THREE, config) {
         joint.visible = false;
         scene.add(joint);
         bodyMesh.joints[i] = joint;
-        joint.userData = {};
     }
     
     // Create bones (cylinders between joints)
@@ -58,17 +58,8 @@ export function initBodyTracking(scene, THREE, config) {
     return bodyMesh;
 }
 
-// Function to smooth position
-function smoothPosition(prevPosition, newPosition, smoothingFactor) {
-    return new THREE.Vector3(
-        prevPosition.x * (1 - smoothingFactor) + newPosition.x * smoothingFactor,
-        prevPosition.y * (1 - smoothingFactor) + newPosition.y * smoothingFactor,
-        prevPosition.z * (1 - smoothingFactor) + newPosition.z * smoothingFactor
-    );
-}
-
 // Update body mesh with new pose data
-export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, smoothingEnabled = true, smoothingFactor = 0.8) {
+export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, smoothingFactor = 0) {
     // Scale and position the joints based on the landmarks
     for (let i = 0; i < landmarks.length; i++) {
         const landmark = landmarks[i];
@@ -82,15 +73,23 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, smoothingEnabl
             (landmark.z * 2) // z scaled for better visibility
         );
         
-        // Apply smoothing if enabled
-        if (smoothingEnabled && joint.userData.prevPosition) {
-            joint.position.copy(smoothPosition(joint.userData.prevPosition, newPosition, smoothingFactor));
+        // Apply position smoothing if enabled
+        let smoothedPosition;
+        if (smoothingFactor > 0 && bodyMesh.previousPositions[i]) {
+            smoothedPosition = new THREE.Vector3().lerpVectors(
+                newPosition,
+                bodyMesh.previousPositions[i],
+                smoothingFactor
+            );
         } else {
-            joint.position.copy(newPosition);
+            smoothedPosition = newPosition;
         }
         
-        // Store current position for next frame's smoothing
-        joint.userData.prevPosition = joint.position.clone();
+        // Update the joint position
+        joint.position.copy(smoothedPosition);
+        
+        // Store this position for next frame's smoothing
+        bodyMesh.previousPositions[i] = smoothedPosition.clone();
         
         joint.visible = landmark.visibility > 0.5;
     }
