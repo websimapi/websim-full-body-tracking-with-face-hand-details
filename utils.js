@@ -26,24 +26,13 @@ export function updateBone(bone, startPos, endPos) {
     bone.scale.set(1, 1, length);
 }
 
-// Smoothing function using moving average
-export function smoothPosition(newPosition, history, smoothingFactor) {
-    if (history.length === 0) {
-        history.push(newPosition.clone());
-        return newPosition.clone();
-    }
+// Position smoothing with exponential moving average
+export function smoothPosition(currentPos, newPos, smoothingFactor = 0.8) {
+    if (!currentPos) return newPos.clone();
     
-    // Apply exponential smoothing
-    const smoothed = new THREE.Vector3().copy(history[history.length - 1]);
-    smoothed.lerp(newPosition, 1 - smoothingFactor);
-    
-    // Store in history
-    history.push(smoothed.clone());
-    
-    // Keep history at the right size
-    if (history.length > 10) {
-        history.shift();
-    }
-    
-    return smoothed;
+    return new THREE.Vector3(
+        currentPos.x * smoothingFactor + newPos.x * (1 - smoothingFactor),
+        currentPos.y * smoothingFactor + newPos.y * (1 - smoothingFactor),
+        currentPos.z * smoothingFactor + newPos.z * (1 - smoothingFactor)
+    );
 }

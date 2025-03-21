@@ -39,18 +39,21 @@ export const config = {
         minTrackingConfidence: 0.5
     },
     
+    // Smoothing settings
+    smoothing: {
+        enabled: true,
+        factor: {
+            body: 0.8,
+            face: 0.7,
+            hand: 0.75
+        }
+    },
+    
     // Camera settings
     camera: {
         width: 1280,
         height: 720,
         fps: 30
-    },
-    
-    // Smoothing settings
-    smoothing: {
-        enabled: true,
-        factor: 0.65,  // Higher values (0-1) mean more smoothing
-        historySize: 5  // Number of frames to average
     },
     
     // 3D model settings

@@ -28,8 +28,7 @@ export const FACEMESH_CONTOURS = [
 export function initFaceTracking(scene, THREE, config) {
     const faceMesh = {
         landmarks: {},
-        connections: {},
-        positionHistory: {}  // Store position history for smoothing
+        connections: {}
     };
     
     const faceMaterial = new THREE.MeshStandardMaterial({ 
@@ -72,7 +71,7 @@ export function initFaceTracking(scene, THREE, config) {
 }
 
 // Update face mesh with new landmark data
-export function updateFaceMesh(landmarks, faceMesh, updateBoneFn, smoothingConfig) {
+export function updateFaceMesh(landmarks, faceMesh, updateBoneFn, smoothingEnabled = true, smoothingFactor = 0.7) {
     // Update face landmarks
     for (let i = 0; i < landmarks.length; i++) {
         if (!faceMesh.landmarks[i]) continue; // Skip if landmark doesn't exist in our mesh
@@ -80,38 +79,27 @@ export function updateFaceMesh(landmarks, faceMesh, updateBoneFn, smoothingConfi
         const landmark = landmarks[i];
         const joint = faceMesh.landmarks[i];
         
-        // Position face landmarks in 3D space
+        // Calculate new position in 3D space
         const newPosition = new THREE.Vector3(
             -(landmark.x - 0.5) * 2, 
             (landmark.y - 0.5) * -2, 
             (landmark.z * 2)
         );
         
-        // Initialize history array if it doesn't exist
-        if (!faceMesh.positionHistory[i]) {
-            faceMesh.positionHistory[i] = [];
-        }
-        
         // Apply smoothing if enabled
-        let finalPosition;
-        if (smoothingConfig && smoothingConfig.smoothing) {
-            finalPosition = smoothPosition(
-                newPosition, 
-                faceMesh.positionHistory[i], 
-                smoothingConfig.smoothingFactor
-            );
+        if (smoothingEnabled && joint.userData && joint.userData.prevPosition) {
+            joint.position.copy(smoothPosition(joint.userData.prevPosition, newPosition, smoothingFactor));
         } else {
-            finalPosition = newPosition;
+            joint.position.copy(newPosition);
         }
         
-        joint.position.copy(finalPosition);
+        // Store current position for next frame's smoothing
+        if (!joint.userData) {
+            joint.userData = {};
+        }
+        joint.userData.prevPosition = joint.position.clone();
+        
         joint.visible = true;
-        
-        // Add new position to history
-        faceMesh.positionHistory[i].push(newPosition);
-        if (faceMesh.positionHistory[i].length > 10) {
-            faceMesh.positionHistory[i].shift();
-        }
     }
     
     // Update face contour connections
@@ -128,20 +116,6 @@ export function updateFaceMesh(landmarks, faceMesh, updateBoneFn, smoothingConfi
     }
 }
 
-function smoothPosition(newPosition, history, smoothingFactor) {
-    if (history.length === 0) {
-        return newPosition;
-    }
-    
-    const sum = new THREE.Vector3();
-    for (const position of history) {
-        sum.add(position);
-    }
-    const average = sum.divideScalar(history.length);
-    
-    return average.lerp(newPosition, smoothingFactor);
-}
-
 // Hide face mesh
 export function hideFaceMesh(faceMesh) {
     // Hide all face landmarks and connections
@@ -152,4 +126,13 @@ export function hideFaceMesh(faceMesh) {
     for (const key in faceMesh.connections) {
         faceMesh.connections[key].visible = false;
     }
+}
+
+// Helper function for smoothing
+function smoothPosition(prevPosition, newPosition, smoothingFactor) {
+    return new THREE.Vector3(
+        prevPosition.x * smoothingFactor + newPosition.x * (1 - smoothingFactor),
+        prevPosition.y * smoothingFactor + newPosition.y * (1 - smoothingFactor),
+        prevPosition.z * smoothingFactor + newPosition.z * (1 - smoothingFactor)
+    );
 }

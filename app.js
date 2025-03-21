@@ -140,11 +140,13 @@ function resizeCanvasToDisplaySize() {
 function updateThreeJSPose(results) {
     // Update body pose
     if (showBodyCheckbox.checked && results.poseLandmarks) {
-        updateBodyMesh(results.poseLandmarks, bodyMesh, updateBone, {
-            smoothing: config.smoothing.enabled,
-            smoothingFactor: config.smoothing.factor,
-            historySize: config.smoothing.historySize
-        });
+        updateBodyMesh(
+            results.poseLandmarks, 
+            bodyMesh, 
+            updateBone, 
+            config.smoothing.enabled, 
+            config.smoothing.factor.body
+        );
     } else {
         // Hide body mesh
         hideBodyMesh(bodyMesh);
@@ -152,11 +154,13 @@ function updateThreeJSPose(results) {
     
     // Update face
     if (showFaceCheckbox.checked && results.faceLandmarks) {
-        updateFaceMesh(results.faceLandmarks, faceMesh, updateBone, {
-            smoothing: config.smoothing.enabled,
-            smoothingFactor: config.smoothing.factor,
-            historySize: config.smoothing.historySize
-        });
+        updateFaceMesh(
+            results.faceLandmarks, 
+            faceMesh, 
+            updateBone,
+            config.smoothing.enabled, 
+            config.smoothing.factor.face
+        );
     } else {
         // Hide face mesh
         hideFaceMesh(faceMesh);
@@ -166,22 +170,26 @@ function updateThreeJSPose(results) {
     if (showHandsCheckbox.checked) {
         // Update left hand
         if (results.leftHandLandmarks) {
-            updateHandMesh(results.leftHandLandmarks, leftHandMesh, updateBone, {
-                smoothing: config.smoothing.enabled,
-                smoothingFactor: config.smoothing.factor,
-                historySize: config.smoothing.historySize
-            });
+            updateHandMesh(
+                results.leftHandLandmarks, 
+                leftHandMesh, 
+                updateBone,
+                config.smoothing.enabled, 
+                config.smoothing.factor.hand
+            );
         } else {
             hideHandMesh(leftHandMesh);
         }
         
         // Update right hand
         if (results.rightHandLandmarks) {
-            updateHandMesh(results.rightHandLandmarks, rightHandMesh, updateBone, {
-                smoothing: config.smoothing.enabled,
-                smoothingFactor: config.smoothing.factor,
-                historySize: config.smoothing.historySize
-            });
+            updateHandMesh(
+                results.rightHandLandmarks, 
+                rightHandMesh, 
+                updateBone,
+                config.smoothing.enabled, 
+                config.smoothing.factor.hand
+            );
         } else {
             hideHandMesh(rightHandMesh);
         }
