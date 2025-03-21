@@ -358,6 +358,8 @@ function updateBodyMesh(landmarks) {
 function updateFaceMesh(landmarks) {
     // Update face landmarks
     for (let i = 0; i < landmarks.length; i++) {
+        if (!faceMesh.landmarks[i]) continue; // Skip if landmark doesn't exist in our mesh
+        
         const landmark = landmarks[i];
         const joint = faceMesh.landmarks[i];
         
@@ -374,12 +376,12 @@ function updateFaceMesh(landmarks) {
     // Update face contour connections
     for (const connection of FACEMESH_CONTOURS) {
         const [i, j] = connection;
+        if (!faceMesh.connections[connection.join('-')] || !faceMesh.landmarks[i] || !faceMesh.landmarks[j]) continue;
+        
         const bone = faceMesh.connections[connection.join('-')];
         
-        if (faceMesh.landmarks[i] && faceMesh.landmarks[j]) {
-            updateBone(bone, faceMesh.landmarks[i].position, faceMesh.landmarks[j].position);
-            bone.visible = true;
-        }
+        updateBone(bone, faceMesh.landmarks[i].position, faceMesh.landmarks[j].position);
+        bone.visible = true;
     }
 }
 
