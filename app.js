@@ -1,11 +1,14 @@
 import { config } from './config.js';
-import { ThreeScene } from './three-scene.js';
+import { initBodyTracking, updateBodyMesh, hideBodyMesh } from './bodyTracking.js';
+import { initFaceTracking, updateFaceMesh, hideFaceMesh } from './faceTracking.js';
+import { initHandTracking, updateHandMesh, hideHandMesh } from './handTracking.js';
 
 // Global references to MediaPipe objects now loaded via script tags
 const Holistic = window.Holistic;
 const drawConnectors = window.drawConnectors;
 const drawLandmarks = window.drawLandmarks;
 const Camera = window.Camera;
+const THREE = window.THREE;
 
 // DOM Elements
 const video = document.getElementById('webcam');
@@ -22,7 +25,13 @@ const showHandsCheckbox = document.getElementById('show-hands');
 // Tracking state
 let holistic;
 let camera;
-let threeScene;
+
+// Three.js objects
+let scene, renderer, camera3D;
+let bodyMesh = {};
+let faceMesh = {};
+let leftHandMesh = {};
+let rightHandMesh = {};
 
 // Initialize the application
 async function init() {
@@ -53,7 +62,7 @@ async function init() {
         });
         
         // Initialize Three.js scene
-        threeScene = new ThreeScene(sceneContainer);
+        initThreeJS();
         
         // Start the camera
         await camera.start();
@@ -68,6 +77,53 @@ async function init() {
     }
 }
 
+// Initialize Three.js scene
+function initThreeJS() {
+    // Create scene
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(config.threeJS.background);
+
+    // Create camera
+    camera3D = new THREE.PerspectiveCamera(75, sceneContainer.clientWidth / sceneContainer.clientHeight, 0.1, 1000);
+    camera3D.position.set(0, 0, 2);
+    camera3D.lookAt(0, 0, 0);
+
+    // Create renderer
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
+    sceneContainer.appendChild(renderer.domElement);
+
+    // Add lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(0, 1, 2);
+    scene.add(directionalLight);
+
+    // Initialize tracking meshes
+    bodyMesh = initBodyTracking(scene, config);
+    faceMesh = initFaceTracking(scene, config);
+    leftHandMesh = initHandTracking(scene, config, 'left');
+    rightHandMesh = initHandTracking(scene, config, 'right');
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        camera3D.aspect = sceneContainer.clientWidth / sceneContainer.clientHeight;
+        camera3D.updateProjectionMatrix();
+        renderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
+    });
+
+    // Start animation loop
+    animate();
+}
+
+// Animation loop
+function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera3D);
+}
+
 // Handle window resize
 window.addEventListener('resize', resizeCanvasToDisplaySize);
 
@@ -79,6 +135,46 @@ function resizeCanvasToDisplaySize() {
     canvas.height = vidHeight;
 }
 
+// Update the 3D scene with new pose data
+function updateThreeJSPose(results) {
+    // Update body pose
+    if (showBodyCheckbox.checked && results.poseLandmarks) {
+        updateBodyMesh(bodyMesh, results.poseLandmarks);
+    } else {
+        // Hide body mesh
+        hideBodyMesh(bodyMesh);
+    }
+    
+    // Update face
+    if (showFaceCheckbox.checked && results.faceLandmarks) {
+        updateFaceMesh(faceMesh, results.faceLandmarks);
+    } else {
+        // Hide face mesh
+        hideFaceMesh(faceMesh);
+    }
+    
+    // Update hands
+    if (showHandsCheckbox.checked) {
+        // Update left hand
+        if (results.leftHandLandmarks) {
+            updateHandMesh(leftHandMesh, results.leftHandLandmarks);
+        } else {
+            hideHandMesh(leftHandMesh);
+        }
+        
+        // Update right hand
+        if (results.rightHandLandmarks) {
+            updateHandMesh(rightHandMesh, results.rightHandLandmarks);
+        } else {
+            hideHandMesh(rightHandMesh);
+        }
+    } else {
+        // Hide hand meshes
+        hideHandMesh(leftHandMesh);
+        hideHandMesh(rightHandMesh);
+    }
+}
+
 // Process and visualize the tracking results
 function onResults(results) {
     // Clear the canvas
@@ -88,11 +184,7 @@ function onResults(results) {
     if (!results) return;
     
     // Update 3D visualization with the new pose data
-    threeScene.updatePose(results, {
-        showBody: showBodyCheckbox.checked,
-        showFace: showFaceCheckbox.checked,
-        showHands: showHandsCheckbox.checked
-    });
+    updateThreeJSPose(results);
     
     // Draw body pose if enabled (on the small webcam feed)
     if (showBodyCheckbox.checked && results.poseLandmarks) {
@@ -169,8 +261,7 @@ function onResults(results) {
 }
 
 // Constants for landmark connections
-// POSE_CONNECTIONS for body pose
-const POSE_CONNECTIONS = [
+export const POSE_CONNECTIONS = [
     // Face
     [0, 1], [1, 2], [2, 3], [3, 7], [0, 4], [4, 5], [5, 6], [6, 8],
     // Upper body
@@ -180,8 +271,7 @@ const POSE_CONNECTIONS = [
     [30, 32], [27, 31], [28, 32]
 ];
 
-// FACEMESH_TESSELATION for face mesh triangles
-const FACEMESH_TESSELATION = [
+export const FACEMESH_TESSELATION = [
     // A subset of the full mesh connections
     [127, 34], [34, 139], [139, 127], [11, 0], [0, 37], [37, 11], 
     [232, 231], [231, 120], [120, 232], [72, 37], [37, 39], [39, 72],
@@ -191,8 +281,7 @@ const FACEMESH_TESSELATION = [
     // Simplified for brevity
 ];
 
-// FACEMESH_CONTOURS for face contours
-const FACEMESH_CONTOURS = [
+export const FACEMESH_CONTOURS = [
     // Face oval
     [10, 338], [338, 297], [297, 332], [332, 284], [284, 251], [251, 389], 
     [389, 356], [356, 454], [454, 323], [323, 361], [361, 288], [288, 397], 
@@ -200,10 +289,10 @@ const FACEMESH_CONTOURS = [
     [152, 148], [148, 176], [176, 149], [149, 150], [150, 136], [136, 172], 
     [172, 58], [58, 132], [132, 93], [93, 234], [234, 127], [127, 162], 
     [162, 21], [21, 54], [54, 103], [103, 67], [67, 109], [109, 10],
+    // Simplified for brevity
 ];
 
-// HAND_CONNECTIONS for hand landmarks
-const HAND_CONNECTIONS = [
+export const HAND_CONNECTIONS = [
     // Thumb
     [0, 1], [1, 2], [2, 3], [3, 4],
     // Index finger
