@@ -55,5 +55,21 @@ export const config = {
         jointRadius: 0.03,
         boneRadius: 0.015,
         background: 0x1a1a1a
+    },
+    
+    // Character and terrain settings
+    character: {
+        moveSpeed: 0.05,
+        rotationSpeed: 2.5,
+        armMovementThreshold: 0.2,
+        headRotationThreshold: 0.1
+    },
+    
+    terrain: {
+        size: 20,
+        segments: 30,
+        heightScale: 0.5,
+        color: 0x3a7e45,
+        waterColor: 0x2389da
     }
 };

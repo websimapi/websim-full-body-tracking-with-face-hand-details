@@ -14,7 +14,7 @@ export const POSE_CONNECTIONS = [
 ];
 
 // Initialize body tracking
-export function initBodyTracking(scene, THREE, config) {
+export function initBodyTracking(parent, THREE, config) {
     const bodyMesh = {
         joints: {},
         bones: {}
@@ -29,11 +29,11 @@ export function initBodyTracking(scene, THREE, config) {
     
     const jointGeometry = new THREE.SphereGeometry(config.threeJS.jointRadius, 16, 16);
     
-    // Add body joints to the scene (we'll position them in the update function)
+    // Add body joints to the parent group
     for (let i = 0; i < 33; i++) {
         const joint = new THREE.Mesh(jointGeometry, jointMaterial);
         joint.visible = false;
-        scene.add(joint);
+        parent.add(joint);
         bodyMesh.joints[i] = joint;
     }
     
@@ -49,7 +49,7 @@ export function initBodyTracking(scene, THREE, config) {
         const geometry = new THREE.CylinderGeometry(config.threeJS.boneRadius, config.threeJS.boneRadius, 1, 8);
         geometry.rotateX(Math.PI / 2);
         const bone = new THREE.Mesh(geometry, boneMaterial);
-        scene.add(bone);
+        parent.add(bone);
         bone.visible = false;
         bodyMesh.bones[connection.join('-')] = bone;
     }
@@ -69,7 +69,7 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
         joint.position.set(
             -(landmark.x - 0.5) * 2, // x flipped and centered
             (landmark.y - 0.5) * -2, // y inverted and centered
-            (landmark.z * 4) // Increased z scaling to match hand positioning
+            (landmark.z * 2) // z scaled for better visibility
         );
         
         joint.visible = landmark.visibility > 0.5;
