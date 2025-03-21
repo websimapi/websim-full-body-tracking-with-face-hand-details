@@ -28,7 +28,8 @@ export const FACEMESH_CONTOURS = [
 export function initFaceTracking(scene, THREE, config) {
     const faceMesh = {
         landmarks: {},
-        connections: {}
+        connections: {},
+        positionHistory: {}  // Store position history for smoothing
     };
     
     const faceMaterial = new THREE.MeshStandardMaterial({ 
@@ -71,7 +72,7 @@ export function initFaceTracking(scene, THREE, config) {
 }
 
 // Update face mesh with new landmark data
-export function updateFaceMesh(landmarks, faceMesh, updateBoneFn) {
+export function updateFaceMesh(landmarks, faceMesh, updateBoneFn, smoothingConfig) {
     // Update face landmarks
     for (let i = 0; i < landmarks.length; i++) {
         if (!faceMesh.landmarks[i]) continue; // Skip if landmark doesn't exist in our mesh
@@ -80,13 +81,37 @@ export function updateFaceMesh(landmarks, faceMesh, updateBoneFn) {
         const joint = faceMesh.landmarks[i];
         
         // Position face landmarks in 3D space
-        joint.position.set(
+        const newPosition = new THREE.Vector3(
             -(landmark.x - 0.5) * 2, 
             (landmark.y - 0.5) * -2, 
             (landmark.z * 2)
         );
         
+        // Initialize history array if it doesn't exist
+        if (!faceMesh.positionHistory[i]) {
+            faceMesh.positionHistory[i] = [];
+        }
+        
+        // Apply smoothing if enabled
+        let finalPosition;
+        if (smoothingConfig && smoothingConfig.smoothing) {
+            finalPosition = smoothPosition(
+                newPosition, 
+                faceMesh.positionHistory[i], 
+                smoothingConfig.smoothingFactor
+            );
+        } else {
+            finalPosition = newPosition;
+        }
+        
+        joint.position.copy(finalPosition);
         joint.visible = true;
+        
+        // Add new position to history
+        faceMesh.positionHistory[i].push(newPosition);
+        if (faceMesh.positionHistory[i].length > 10) {
+            faceMesh.positionHistory[i].shift();
+        }
     }
     
     // Update face contour connections
@@ -101,6 +126,20 @@ export function updateFaceMesh(landmarks, faceMesh, updateBoneFn) {
         updateBoneFn(bone, faceMesh.landmarks[i].position, faceMesh.landmarks[j].position);
         bone.visible = true;
     }
+}
+
+function smoothPosition(newPosition, history, smoothingFactor) {
+    if (history.length === 0) {
+        return newPosition;
+    }
+    
+    const sum = new THREE.Vector3();
+    for (const position of history) {
+        sum.add(position);
+    }
+    const average = sum.divideScalar(history.length);
+    
+    return average.lerp(newPosition, smoothingFactor);
 }
 
 // Hide face mesh

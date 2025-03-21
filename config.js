@@ -46,6 +46,13 @@ export const config = {
         fps: 30
     },
     
+    // Smoothing settings
+    smoothing: {
+        enabled: true,
+        factor: 0.65,  // Higher values (0-1) mean more smoothing
+        historySize: 5  // Number of frames to average
+    },
+    
     // 3D model settings
     threeJS: {
         bodyColor: 0x00ff00,

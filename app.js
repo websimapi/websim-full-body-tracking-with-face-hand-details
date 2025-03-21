@@ -2,7 +2,7 @@ import { config } from './config.js';
 import { initBodyTracking, updateBodyMesh, hideBodyMesh, POSE_CONNECTIONS } from './bodyTracking.js';
 import { initFaceTracking, updateFaceMesh, hideFaceMesh, FACEMESH_TESSELATION, FACEMESH_CONTOURS } from './faceTracking.js';
 import { initHandTracking, updateHandMesh, hideHandMesh, HAND_CONNECTIONS } from './handTracking.js';
-import { createBone, updateBone } from './utils.js';
+import { createBone, updateBone, smoothPosition } from './utils.js';
 
 // Global references to MediaPipe objects now loaded via script tags
 const Holistic = window.Holistic;
@@ -140,7 +140,11 @@ function resizeCanvasToDisplaySize() {
 function updateThreeJSPose(results) {
     // Update body pose
     if (showBodyCheckbox.checked && results.poseLandmarks) {
-        updateBodyMesh(results.poseLandmarks, bodyMesh, updateBone);
+        updateBodyMesh(results.poseLandmarks, bodyMesh, updateBone, {
+            smoothing: config.smoothing.enabled,
+            smoothingFactor: config.smoothing.factor,
+            historySize: config.smoothing.historySize
+        });
     } else {
         // Hide body mesh
         hideBodyMesh(bodyMesh);
@@ -148,7 +152,11 @@ function updateThreeJSPose(results) {
     
     // Update face
     if (showFaceCheckbox.checked && results.faceLandmarks) {
-        updateFaceMesh(results.faceLandmarks, faceMesh, updateBone);
+        updateFaceMesh(results.faceLandmarks, faceMesh, updateBone, {
+            smoothing: config.smoothing.enabled,
+            smoothingFactor: config.smoothing.factor,
+            historySize: config.smoothing.historySize
+        });
     } else {
         // Hide face mesh
         hideFaceMesh(faceMesh);
@@ -158,14 +166,22 @@ function updateThreeJSPose(results) {
     if (showHandsCheckbox.checked) {
         // Update left hand
         if (results.leftHandLandmarks) {
-            updateHandMesh(results.leftHandLandmarks, leftHandMesh, updateBone);
+            updateHandMesh(results.leftHandLandmarks, leftHandMesh, updateBone, {
+                smoothing: config.smoothing.enabled,
+                smoothingFactor: config.smoothing.factor,
+                historySize: config.smoothing.historySize
+            });
         } else {
             hideHandMesh(leftHandMesh);
         }
         
         // Update right hand
         if (results.rightHandLandmarks) {
-            updateHandMesh(results.rightHandLandmarks, rightHandMesh, updateBone);
+            updateHandMesh(results.rightHandLandmarks, rightHandMesh, updateBone, {
+                smoothing: config.smoothing.enabled,
+                smoothingFactor: config.smoothing.factor,
+                historySize: config.smoothing.historySize
+            });
         } else {
             hideHandMesh(rightHandMesh);
         }

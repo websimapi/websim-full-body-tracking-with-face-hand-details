@@ -17,7 +17,8 @@ export const POSE_CONNECTIONS = [
 export function initBodyTracking(scene, THREE, config) {
     const bodyMesh = {
         joints: {},
-        bones: {}
+        bones: {},
+        positionHistory: {}  // Store position history for smoothing
     };
     
     // Create a material for body joints
@@ -58,7 +59,7 @@ export function initBodyTracking(scene, THREE, config) {
 }
 
 // Update body mesh with new pose data
-export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
+export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, smoothingConfig) {
     // Scale and position the joints based on the landmarks
     for (let i = 0; i < landmarks.length; i++) {
         const landmark = landmarks[i];
@@ -66,12 +67,30 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
         
         // Convert to 3D space, flipping coordinates as needed
         // x is flipped to mirror the pose correctly
-        joint.position.set(
+        const newPosition = new THREE.Vector3(
             -(landmark.x - 0.5) * 2, // x flipped and centered
             (landmark.y - 0.5) * -2, // y inverted and centered
             (landmark.z * 2) // z scaled for better visibility
         );
         
+        // Initialize history array if it doesn't exist
+        if (!bodyMesh.positionHistory[i]) {
+            bodyMesh.positionHistory[i] = [];
+        }
+        
+        // Apply smoothing if enabled
+        let finalPosition;
+        if (smoothingConfig && smoothingConfig.smoothing) {
+            finalPosition = smoothPosition(
+                newPosition, 
+                bodyMesh.positionHistory[i], 
+                smoothingConfig.smoothingFactor
+            );
+        } else {
+            finalPosition = newPosition;
+        }
+        
+        joint.position.copy(finalPosition);
         joint.visible = landmark.visibility > 0.5;
     }
     
@@ -91,6 +110,13 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
             bone.visible = false;
         }
     }
+}
+
+// Smoothing function
+function smoothPosition(newPosition, positionHistory, smoothingFactor) {
+    // Simple smoothing function, this should be implemented according to the actual smoothing logic
+    // For now, just return the new position
+    return newPosition;
 }
 
 // Hide body mesh
