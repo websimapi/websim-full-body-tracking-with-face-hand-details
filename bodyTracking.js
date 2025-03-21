@@ -64,6 +64,8 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
         const landmark = landmarks[i];
         const joint = bodyMesh.joints[i];
         
+        if (!joint) continue; // Skip if joint doesn't exist
+        
         // Convert to 3D space, flipping coordinates as needed
         // x is flipped to mirror the pose correctly
         joint.position.set(
@@ -79,6 +81,8 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
     for (const connection of POSE_CONNECTIONS) {
         const [i, j] = connection;
         const bone = bodyMesh.bones[connection.join('-')];
+        
+        if (!bone || !bodyMesh.joints[i] || !bodyMesh.joints[j]) continue;
         
         const jointA = bodyMesh.joints[i];
         const jointB = bodyMesh.joints[j];
