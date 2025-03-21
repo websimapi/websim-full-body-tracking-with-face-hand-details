@@ -44,6 +44,16 @@ export const config = {
         width: 1280,
         height: 720,
         fps: 30
+    },
+    
+    // 3D model settings
+    threeJS: {
+        bodyColor: 0x00ff00,
+        faceColor: 0xff8a00,
+        leftHandColor: 0xff0000,
+        rightHandColor: 0x00d9e7,
+        jointRadius: 0.03,
+        boneRadius: 0.015,
+        background: 0x1a1a1a
     }
 };
-

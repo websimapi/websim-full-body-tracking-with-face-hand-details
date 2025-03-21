@@ -12,6 +12,7 @@ body {
     justify-content: center;
     min-height: 100vh;
     padding: 20px;
+    overflow: hidden;
 }
 
 .container {
@@ -21,6 +22,7 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 20px;
+    position: relative;
 }
 
 h1 {
@@ -29,22 +31,34 @@ h1 {
     color: #03a9f4;
 }
 
-.video-container {
-    position: relative;
+#scene-container {
     width: 100%;
-    max-width: 800px;
-    margin: 0 auto;
+    height: 70vh;
+    background-color: #1a1a1a;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
 }
 
+.webcam-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 320px;
+    height: 180px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+
 #webcam {
     width: 100%;
-    height: auto;
+    height: 100%;
     transform: rotateY(180deg); /* Mirror the webcam feed */
     display: block;
     background-color: #000;
+    object-fit: cover;
 }
 
 #output-canvas {
@@ -109,4 +123,3 @@ input[type="checkbox"] {
         align-items: flex-start;
     }
 }
-
