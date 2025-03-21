@@ -22,8 +22,7 @@ export const HAND_CONNECTIONS = [
 export function initHandTracking(scene, THREE, config, side) {
     const handMesh = {
         landmarks: {},
-        connections: {},
-        previousPositions: {} // Store previous positions for smoothing
+        connections: {}
     };
     
     const isLeft = side === 'left';
@@ -69,36 +68,18 @@ export function initHandTracking(scene, THREE, config, side) {
 }
 
 // Update hand mesh with new landmark data
-export function updateHandMesh(landmarks, handMesh, updateBoneFn, smoothingFactor = 0) {
+export function updateHandMesh(landmarks, handMesh, updateBoneFn) {
     // Update hand landmarks
     for (let i = 0; i < landmarks.length; i++) {
         const landmark = landmarks[i];
         const joint = handMesh.landmarks[i];
         
         // Position hand landmarks in 3D space
-        const newPosition = new THREE.Vector3(
+        joint.position.set(
             -(landmark.x - 0.5) * 2, 
             (landmark.y - 0.5) * -2, 
             (landmark.z * 2)
         );
-        
-        // Apply position smoothing if enabled
-        let smoothedPosition;
-        if (smoothingFactor > 0 && handMesh.previousPositions[i]) {
-            smoothedPosition = new THREE.Vector3().lerpVectors(
-                newPosition,
-                handMesh.previousPositions[i],
-                smoothingFactor
-            );
-        } else {
-            smoothedPosition = newPosition;
-        }
-        
-        // Update the joint position
-        joint.position.copy(smoothedPosition);
-        
-        // Store this position for next frame's smoothing
-        handMesh.previousPositions[i] = smoothedPosition.clone();
         
         joint.visible = true;
     }

@@ -17,8 +17,7 @@ export const POSE_CONNECTIONS = [
 export function initBodyTracking(scene, THREE, config) {
     const bodyMesh = {
         joints: {},
-        bones: {},
-        previousPositions: {} // Store previous positions for smoothing
+        bones: {}
     };
     
     // Create a material for body joints
@@ -59,7 +58,7 @@ export function initBodyTracking(scene, THREE, config) {
 }
 
 // Update body mesh with new pose data
-export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, smoothingFactor = 0) {
+export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
     // Scale and position the joints based on the landmarks
     for (let i = 0; i < landmarks.length; i++) {
         const landmark = landmarks[i];
@@ -67,29 +66,11 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, smoothingFacto
         
         // Convert to 3D space, flipping coordinates as needed
         // x is flipped to mirror the pose correctly
-        const newPosition = new THREE.Vector3(
+        joint.position.set(
             -(landmark.x - 0.5) * 2, // x flipped and centered
             (landmark.y - 0.5) * -2, // y inverted and centered
-            (landmark.z * 2) // z scaled for better visibility
+            (landmark.z * 2) - 0.5 // z scaled and shifted forward for better positioning
         );
-        
-        // Apply position smoothing if enabled
-        let smoothedPosition;
-        if (smoothingFactor > 0 && bodyMesh.previousPositions[i]) {
-            smoothedPosition = new THREE.Vector3().lerpVectors(
-                newPosition,
-                bodyMesh.previousPositions[i],
-                smoothingFactor
-            );
-        } else {
-            smoothedPosition = newPosition;
-        }
-        
-        // Update the joint position
-        joint.position.copy(smoothedPosition);
-        
-        // Store this position for next frame's smoothing
-        bodyMesh.previousPositions[i] = smoothedPosition.clone();
         
         joint.visible = landmark.visibility > 0.5;
     }

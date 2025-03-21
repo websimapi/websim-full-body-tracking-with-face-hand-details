@@ -23,10 +23,6 @@ const showBodyCheckbox = document.getElementById('show-body');
 const showFaceCheckbox = document.getElementById('show-face');
 const showHandsCheckbox = document.getElementById('show-hands');
 
-// Smoothing slider
-const smoothingSlider = document.getElementById('smoothing-slider');
-const smoothingValueDisplay = document.getElementById('smoothing-value');
-
 // Tracking state
 let holistic;
 let camera;
@@ -74,17 +70,6 @@ async function init() {
         
         // Resize canvas to match video dimensions
         resizeCanvasToDisplaySize();
-        
-        // Set up smoothing slider
-        smoothingSlider.addEventListener('input', function() {
-            const value = this.value;
-            config.smoothing.factor = value / 100;
-            smoothingValueDisplay.textContent = `${value}%`;
-        });
-        
-        // Initialize slider with config value
-        smoothingSlider.value = config.smoothing.factor * 100;
-        smoothingValueDisplay.textContent = `${smoothingSlider.value}%`;
         
         statusElement.textContent = "Tracking active";
     } catch (error) {
@@ -153,12 +138,9 @@ function resizeCanvasToDisplaySize() {
 
 // Update the 3D scene with new pose data
 function updateThreeJSPose(results) {
-    // Get current smoothing factor from config
-    const smoothingFactor = config.smoothing.enabled ? config.smoothing.factor : 0;
-    
     // Update body pose
     if (showBodyCheckbox.checked && results.poseLandmarks) {
-        updateBodyMesh(results.poseLandmarks, bodyMesh, updateBone, smoothingFactor);
+        updateBodyMesh(results.poseLandmarks, bodyMesh, updateBone);
     } else {
         // Hide body mesh
         hideBodyMesh(bodyMesh);
@@ -166,7 +148,7 @@ function updateThreeJSPose(results) {
     
     // Update face
     if (showFaceCheckbox.checked && results.faceLandmarks) {
-        updateFaceMesh(results.faceLandmarks, faceMesh, updateBone, smoothingFactor);
+        updateFaceMesh(results.faceLandmarks, faceMesh, updateBone);
     } else {
         // Hide face mesh
         hideFaceMesh(faceMesh);
@@ -176,14 +158,14 @@ function updateThreeJSPose(results) {
     if (showHandsCheckbox.checked) {
         // Update left hand
         if (results.leftHandLandmarks) {
-            updateHandMesh(results.leftHandLandmarks, leftHandMesh, updateBone, smoothingFactor);
+            updateHandMesh(results.leftHandLandmarks, leftHandMesh, updateBone);
         } else {
             hideHandMesh(leftHandMesh);
         }
         
         // Update right hand
         if (results.rightHandLandmarks) {
-            updateHandMesh(results.rightHandLandmarks, rightHandMesh, updateBone, smoothingFactor);
+            updateHandMesh(results.rightHandLandmarks, rightHandMesh, updateBone);
         } else {
             hideHandMesh(rightHandMesh);
         }

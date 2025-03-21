@@ -25,19 +25,3 @@ export function updateBone(bone, startPos, endPos) {
     const length = startPos.distanceTo(endPos);
     bone.scale.set(1, 1, length);
 }
-
-// Smoothing function for landmark positions
-export function smoothPosition(currentPos, previousPos, smoothingFactor) {
-    if (!previousPos || smoothingFactor === 0) {
-        return currentPos.clone();
-    }
-    
-    // Linear interpolation between previous and current position
-    const lerpedPosition = new THREE.Vector3().lerpVectors(
-        previousPos,
-        currentPos,
-        smoothingFactor
-    );
-    
-    return lerpedPosition;
-}

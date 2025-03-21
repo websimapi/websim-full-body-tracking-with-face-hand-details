@@ -39,12 +39,6 @@ export const config = {
         minTrackingConfidence: 0.5
     },
     
-    // Smoothing settings
-    smoothing: {
-        enabled: true,
-        factor: 0.5, // Default smoothing factor (0.0 = no smoothing, 1.0 = maximum smoothing)
-    },
-    
     // Camera settings
     camera: {
         width: 1280,

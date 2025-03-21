@@ -28,8 +28,7 @@ export const FACEMESH_CONTOURS = [
 export function initFaceTracking(scene, THREE, config) {
     const faceMesh = {
         landmarks: {},
-        connections: {},
-        previousPositions: {} // Store previous positions for smoothing
+        connections: {}
     };
     
     const faceMaterial = new THREE.MeshStandardMaterial({ 
@@ -72,7 +71,7 @@ export function initFaceTracking(scene, THREE, config) {
 }
 
 // Update face mesh with new landmark data
-export function updateFaceMesh(landmarks, faceMesh, updateBoneFn, smoothingFactor = 0) {
+export function updateFaceMesh(landmarks, faceMesh, updateBoneFn) {
     // Update face landmarks
     for (let i = 0; i < landmarks.length; i++) {
         if (!faceMesh.landmarks[i]) continue; // Skip if landmark doesn't exist in our mesh
@@ -81,29 +80,11 @@ export function updateFaceMesh(landmarks, faceMesh, updateBoneFn, smoothingFacto
         const joint = faceMesh.landmarks[i];
         
         // Position face landmarks in 3D space
-        const newPosition = new THREE.Vector3(
+        joint.position.set(
             -(landmark.x - 0.5) * 2, 
             (landmark.y - 0.5) * -2, 
             (landmark.z * 2)
         );
-        
-        // Apply position smoothing if enabled
-        let smoothedPosition;
-        if (smoothingFactor > 0 && faceMesh.previousPositions[i]) {
-            smoothedPosition = new THREE.Vector3().lerpVectors(
-                newPosition,
-                faceMesh.previousPositions[i],
-                smoothingFactor
-            );
-        } else {
-            smoothedPosition = newPosition;
-        }
-        
-        // Update the joint position
-        joint.position.copy(smoothedPosition);
-        
-        // Store this position for next frame's smoothing
-        faceMesh.previousPositions[i] = smoothedPosition.clone();
         
         joint.visible = true;
     }
