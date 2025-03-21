@@ -1,7 +1,11 @@
 import { config } from './config.js';
 
-// We'll dynamically import these libraries
-let Holistic, drawConnectors, drawLandmarks, Camera;
+// Global references to MediaPipe objects now loaded via script tags
+// We no longer need to dynamically import these
+const Holistic = window.Holistic;
+const drawConnectors = window.drawConnectors;
+const drawLandmarks = window.drawLandmarks;
+const Camera = window.Camera;
 
 // DOM Elements
 const video = document.getElementById('webcam');
@@ -21,16 +25,7 @@ let camera;
 // Initialize the application
 async function init() {
     try {
-        // Import necessary modules
-        const mediapipeModule = await import('mediapipe');
-        const drawingModule = await import('mediapipe-drawing');
-        const cameraModule = await import('camera-utils');
-        
-        Holistic = mediapipeModule.Holistic;
-        drawConnectors = drawingModule.drawConnectors;
-        drawLandmarks = drawingModule.drawLandmarks;
-        Camera = cameraModule.Camera;
-        
+        // No need to import modules anymore as they're available globally
         statusElement.textContent = "Initializing holistic model...";
         
         // Initialize the holistic model
@@ -217,4 +212,3 @@ const HAND_CONNECTIONS = [
 
 // Initialize the app when the page loads
 window.addEventListener('DOMContentLoaded', init);
-
