@@ -174,6 +174,11 @@ function updateThreeJSPose(results) {
         hideHandMesh(leftHandMesh);
         hideHandMesh(rightHandMesh);
     }
+    
+    // Connect arms to hands if both are visible
+    if (showBodyCheckbox.checked && showHandsCheckbox.checked) {
+        connectArmsToHands(bodyMesh, leftHandMesh, rightHandMesh);
+    }
 }
 
 // Process and visualize the tracking results
