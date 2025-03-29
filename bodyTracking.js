@@ -64,14 +64,20 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
         const landmark = landmarks[i];
         const joint = bodyMesh.joints[i];
         
-        // Convert to 3D space with improved positioning
+        // Convert to 3D space, adjusting coordinates
+        // X is flipped to mirror the pose correctly
+        // Y is inverted
+        // Z is inverted and scaled (adjust scaling as needed for depth perception)
         joint.position.set(
-            -(landmark.x - 0.5) * 2,     // Wider x-range for more accurate mirroring
-            (landmark.y - 0.5) * -2.5,   // Increased y scale for better vertical positioning
-            landmark.z * 2               // Enhanced depth scaling for more natural 3D appearance
+            -(landmark.x - 0.5) * 2, 
+            (landmark.y - 0.5) * -2, 
+            landmark.z * -2 // Inverted Z, scaled same as X/Y for initial consistency
+                           // This might need further adjustment based on visual results
+                           // compared to hands/face.
         );
         
-        joint.visible = landmark.visibility > 0.5;
+        // Use landmark visibility score to determine joint visibility
+        joint.visible = landmark.visibility > 0.5; 
     }
     
     // Update bones between joints
@@ -79,10 +85,13 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
         const [i, j] = connection;
         const bone = bodyMesh.bones[connection.join('-')];
         
+        // Ensure both joints exist before proceeding
+        if (!bodyMesh.joints[i] || !bodyMesh.joints[j]) continue;
+
         const jointA = bodyMesh.joints[i];
         const jointB = bodyMesh.joints[j];
         
-        // Only show bones if both joints are visible
+        // Only show bones if both connected joints are visible
         if (jointA.visible && jointB.visible) {
             updateBoneFn(bone, jointA.position, jointB.position);
             bone.visible = true;

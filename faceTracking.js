@@ -79,11 +79,11 @@ export function updateFaceMesh(landmarks, faceMesh, updateBoneFn) {
         const landmark = landmarks[i];
         const joint = faceMesh.landmarks[i];
         
-        // Improved positioning for face landmarks in 3D space
+        // Position face landmarks in 3D space
         joint.position.set(
             -(landmark.x - 0.5) * 2, 
-            (landmark.y - 0.5) * -2.5, 
-            landmark.z * 2
+            (landmark.y - 0.5) * -2, 
+            (landmark.z * 2)
         );
         
         joint.visible = true;
