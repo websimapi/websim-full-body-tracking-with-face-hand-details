@@ -96,64 +96,7 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
 // Connect arms to hand tracking data if available
 export function connectArmsToHands(bodyMesh, leftHandMesh, rightHandMesh) {
     // Connect left arm (joint 15) to left hand wrist (joint 0) if both are visible
-    if (bodyMesh.joints[15] && bodyMesh.joints[15].visible && 
-        leftHandMesh.landmarks[0] && leftHandMesh.landmarks[0].visible) {
-        
-        // Create or update connection between left wrist and hand
-        if (!bodyMesh.bones['15-leftHand']) {
-            const material = bodyMesh.joints[15].material.clone();
-            const geometry = new THREE.CylinderGeometry(0.015, 0.015, 1, 8);
-            geometry.rotateX(Math.PI / 2);
-            bodyMesh.bones['15-leftHand'] = new THREE.Mesh(geometry, material);
-            bodyMesh.bones['15-leftHand'].visible = true;
-            bodyMesh.joints[15].parent.add(bodyMesh.bones['15-leftHand']);
-        }
-        
-        // Update the connection
-        const bone = bodyMesh.bones['15-leftHand'];
-        const updateBoneFn = (bone, startPos, endPos) => {
-            const midpoint = new THREE.Vector3().addVectors(startPos, endPos).multiplyScalar(0.5);
-            bone.position.copy(midpoint);
-            bone.lookAt(endPos);
-            const length = startPos.distanceTo(endPos);
-            bone.scale.set(1, 1, length);
-        };
-        
-        updateBoneFn(bone, bodyMesh.joints[15].position, leftHandMesh.landmarks[0].position);
-        bone.visible = true;
-    } else if (bodyMesh.bones['15-leftHand']) {
-        bodyMesh.bones['15-leftHand'].visible = false;
-    }
-    
-    // Connect right arm (joint 16) to right hand wrist (joint 0) if both are visible
-    if (bodyMesh.joints[16] && bodyMesh.joints[16].visible && 
-        rightHandMesh.landmarks[0] && rightHandMesh.landmarks[0].visible) {
-        
-        // Create or update connection between right wrist and hand
-        if (!bodyMesh.bones['16-rightHand']) {
-            const material = bodyMesh.joints[16].material.clone();
-            const geometry = new THREE.CylinderGeometry(0.015, 0.015, 1, 8);
-            geometry.rotateX(Math.PI / 2);
-            bodyMesh.bones['16-rightHand'] = new THREE.Mesh(geometry, material);
-            bodyMesh.bones['16-rightHand'].visible = true;
-            bodyMesh.joints[16].parent.add(bodyMesh.bones['16-rightHand']);
-        }
-        
-        // Update the connection
-        const bone = bodyMesh.bones['16-rightHand'];
-        const updateBoneFn = (bone, startPos, endPos) => {
-            const midpoint = new THREE.Vector3().addVectors(startPos, endPos).multiplyScalar(0.5);
-            bone.position.copy(midpoint);
-            bone.lookAt(endPos);
-            const length = startPos.distanceTo(endPos);
-            bone.scale.set(1, 1, length);
-        };
-        
-        updateBoneFn(bone, bodyMesh.joints[16].position, rightHandMesh.landmarks[0].position);
-        bone.visible = true;
-    } else if (bodyMesh.bones['16-rightHand']) {
-        bodyMesh.bones['16-rightHand'].visible = false;
-    }
+    // ... existing code ...
 }
 
 // Hide body mesh

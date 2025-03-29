@@ -1,5 +1,5 @@
 import { config } from './config.js';
-import { initBodyTracking, updateBodyMesh, hideBodyMesh, POSE_CONNECTIONS } from './bodyTracking.js';
+import { initBodyTracking, updateBodyMesh, hideBodyMesh, POSE_CONNECTIONS, connectArmsToHands } from './bodyTracking.js';
 import { initFaceTracking, updateFaceMesh, hideFaceMesh, FACEMESH_TESSELATION, FACEMESH_CONTOURS } from './faceTracking.js';
 import { initHandTracking, updateHandMesh, hideHandMesh, HAND_CONNECTIONS } from './handTracking.js';
 import { createBone, updateBone } from './utils.js';
