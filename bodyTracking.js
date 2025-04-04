@@ -93,6 +93,10 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandma
         visibility: rightHandLandmarks[0].visibility || 1 // Assume visible if hand detected
     } : null;
 
+    // Indices of pose landmarks corresponding to fingers connected to the wrist
+    const leftFingerBaseIndices = [17, 19, 21];
+    const rightFingerBaseIndices = [18, 20, 22];
+
     // Scale and position the joints based on the landmarks
     for (let i = 0; i < landmarks.length; i++) {
         let landmark = landmarks[i];
@@ -112,12 +116,21 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandma
             (landmark.z * scaleFactor) // z scaled consistently
         );
         
-        // Use original pose landmark visibility unless overridden by hand
+        // Determine joint visibility
         const visibilityThreshold = 0.5;
         let isVisible = (landmarks[i]?.visibility ?? 1) > visibilityThreshold; 
+
         // Ensure wrist joint visibility aligns with hand tracking if active
         if (i === 15 && leftWristPos) isVisible = leftWristPos.visibility > visibilityThreshold;
         if (i === 16 && rightWristPos) isVisible = rightWristPos.visibility > visibilityThreshold;
+
+        // Hide finger base joints from pose model if the corresponding hand is active
+        if (leftHandActive && leftFingerBaseIndices.includes(i)) {
+            isVisible = false;
+        }
+        if (rightHandActive && rightFingerBaseIndices.includes(i)) {
+             isVisible = false;
+        }
         
         joint.visible = isVisible;
     }
@@ -142,7 +155,7 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandma
         // Hide wrist-to-finger bones if the hand mesh is active, otherwise update based on joint visibility
         if (skipLeftWristFingers || skipRightWristFingers) {
             bone.visible = false;
-        } else if (jointA.visible && jointB.visible) {
+        } else if (jointA && jointB && jointA.visible && jointB.visible) { // Check if joints exist and are visible
             updateBoneFn(bone, jointA.position, jointB.position);
             bone.visible = true;
         } else {
