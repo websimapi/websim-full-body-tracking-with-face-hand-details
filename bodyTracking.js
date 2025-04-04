@@ -4,12 +4,14 @@
 
 // Constants for body landmark connections
 export const POSE_CONNECTIONS = [
-    // Face
-    [0, 1], [1, 2], [2, 3], [3, 7], [0, 4], [4, 5], [5, 6], [6, 8],
+    // Connections *excluding* the face landmarks (0-10)
     // Upper body
-    [9, 10], [11, 12], [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19], 
-    [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20], [11, 23], [12, 24], 
-    [23, 24], [23, 25], [24, 26], [25, 27], [26, 28], [27, 29], [28, 30], [29, 31], 
+    [11, 12], [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19], 
+    [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20], 
+    // Body center
+    [11, 23], [12, 24], [23, 24], 
+    // Lower body
+    [23, 25], [24, 26], [25, 27], [26, 28], [27, 29], [28, 30], [29, 31], 
     [30, 32], [27, 31], [28, 32]
 ];
 
@@ -44,8 +46,8 @@ export function initBodyTracking(scene, THREE, config) {
     
     const jointGeometry = new THREE.SphereGeometry(config.threeJS.jointRadius, 16, 16);
     
-    // Add body joints to the scene (we'll position them in the update function)
-    for (let i = 0; i < 33; i++) {
+    // Add body joints to the scene, skipping face landmarks (0-10)
+    for (let i = 11; i < 33; i++) { // Start from index 11 (shoulders)
         const joint = new THREE.Mesh(jointGeometry, jointMaterial);
         joint.visible = false;
         scene.add(joint);
@@ -59,14 +61,16 @@ export function initBodyTracking(scene, THREE, config) {
         emissiveIntensity: 0.2
     });
     
-    // Create bones for pose connections
+    // Create bones for pose connections (already filtered to exclude face)
     for (const connection of POSE_CONNECTIONS) {
         const geometry = new THREE.CylinderGeometry(config.threeJS.boneRadius, config.threeJS.boneRadius, 1, 8);
         geometry.rotateX(Math.PI / 2);
         const bone = new THREE.Mesh(geometry, boneMaterial);
         scene.add(bone);
         bone.visible = false;
+        // Store with both keys for easier lookup later
         bodyMesh.bones[connection.join('-')] = bone;
+        bodyMesh.bones[`${connection[1]}-${connection[0]}`] = bone;
     }
     
     return bodyMesh;
@@ -98,14 +102,18 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandma
     const rightFingerBaseIndices = [18, 20, 22];
 
     // Scale and position the joints based on the landmarks
-    for (let i = 0; i < landmarks.length; i++) {
+    // Start from index 11 to skip face landmarks
+    for (let i = 11; i < landmarks.length; i++) { 
         let landmark = landmarks[i];
+        // Check if joint exists in our mesh (it should if i >= 11)
+        if (!bodyMesh.joints[i]) continue; 
+        
         const joint = bodyMesh.joints[i];
         
         // Override wrist positions if hand data is available and visible
-        if (i === 15 && leftWristPos && leftWristPos.visibility > 0.5) { // Left Wrist
+        if (i === 15 && leftWristPos && (leftWristPos.visibility ?? 1) > 0.5) { // Left Wrist
             landmark = leftWristPos;
-        } else if (i === 16 && rightWristPos && rightWristPos.visibility > 0.5) { // Right Wrist
+        } else if (i === 16 && rightWristPos && (rightWristPos.visibility ?? 1) > 0.5) { // Right Wrist
             landmark = rightWristPos;
         }
 
@@ -121,8 +129,8 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandma
         let isVisible = (landmarks[i]?.visibility ?? 1) > visibilityThreshold; 
 
         // Ensure wrist joint visibility aligns with hand tracking if active
-        if (i === 15 && leftWristPos) isVisible = leftWristPos.visibility > visibilityThreshold;
-        if (i === 16 && rightWristPos) isVisible = rightWristPos.visibility > visibilityThreshold;
+        if (i === 15 && leftWristPos) isVisible = (leftWristPos.visibility ?? 1) > visibilityThreshold;
+        if (i === 16 && rightWristPos) isVisible = (rightWristPos.visibility ?? 1) > visibilityThreshold;
 
         // Hide finger base joints from pose model if the corresponding hand is active
         if (leftHandActive && leftFingerBaseIndices.includes(i)) {
@@ -135,18 +143,26 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandma
         joint.visible = isVisible;
     }
     
-    // Update bones between joints
+    // Update bones between joints (POSE_CONNECTIONS is already filtered)
     for (const connection of POSE_CONNECTIONS) {
         const [i, j] = connection;
         const connectionKey = connection.join('-');
-        const reversedConnectionKey = `${j}-${i}`; // Check both orders
-
-        // Ensure the bone exists in our mesh structure
-        const bone = bodyMesh.bones[connectionKey] || bodyMesh.bones[reversedConnectionKey];
-        if (!bone) continue; 
         
+        // Ensure the bone exists in our mesh structure
+        const bone = bodyMesh.bones[connectionKey];
+        if (!bone) {
+            // If not found, check the reversed key (should have been stored during init)
+             const reversedBone = bodyMesh.bones[`${j}-${i}`];
+             if (!reversedBone) continue; // Skip if bone doesn't exist either way
+             // Use the reversed bone if found (should not typically happen with new init logic)
+             // console.warn(`Using reversed bone key for ${connectionKey}`);
+             // bone = reversedBone; // No need to reassign, just use it below
+        }
+        
+        // Check if joints exist (they should for i, j >= 11)
         const jointA = bodyMesh.joints[i];
         const jointB = bodyMesh.joints[j];
+        if (!jointA || !jointB) continue; 
 
         // Check if this is a wrist-to-finger connection and if the corresponding hand is active
         const skipLeftWristFingers = leftHandActive && isWristToFingerConnection(connection, 'left');
@@ -155,7 +171,7 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandma
         // Hide wrist-to-finger bones if the hand mesh is active, otherwise update based on joint visibility
         if (skipLeftWristFingers || skipRightWristFingers) {
             bone.visible = false;
-        } else if (jointA && jointB && jointA.visible && jointB.visible) { // Check if joints exist and are visible
+        } else if (jointA.visible && jointB.visible) { // Update only if both connected joints are visible
             updateBoneFn(bone, jointA.position, jointB.position);
             bone.visible = true;
         } else {
@@ -166,12 +182,16 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandma
 
 // Hide body mesh
 export function hideBodyMesh(bodyMesh) {
-    // Hide all body joints and bones
+    // Hide all existing body joints and bones
     for (const key in bodyMesh.joints) {
-        bodyMesh.joints[key].visible = false;
+        if (bodyMesh.joints[key]) { // Check if exists
+             bodyMesh.joints[key].visible = false;
+        }
     }
     
     for (const key in bodyMesh.bones) {
-        bodyMesh.bones[key].visible = false;
+         if (bodyMesh.bones[key]) { // Check if exists
+            bodyMesh.bones[key].visible = false;
+         }
     }
 }

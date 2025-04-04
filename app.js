@@ -1,5 +1,5 @@
 import { config } from './config.js';
-import { initBodyTracking, updateBodyMesh, hideBodyMesh, POSE_CONNECTIONS } from './bodyTracking.js';
+import { initBodyTracking, updateBodyMesh, hideBodyMesh, POSE_CONNECTIONS } from './bodyTracking.js'; 
 import { initFaceTracking, updateFaceMesh, hideFaceMesh, FACEMESH_TESSELATION, FACEMESH_CONTOURS } from './faceTracking.js';
 import { initHandTracking, updateHandMesh, hideHandMesh, HAND_CONNECTIONS } from './handTracking.js';
 import { createBone, updateBone } from './utils.js';
@@ -189,27 +189,37 @@ function onResults(results) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Only draw if we have results
-    if (!results) return;
+    if (!results || !results.poseLandmarks) return; // Ensure pose landmarks exist
     
     // Update 3D visualization with the new pose data
     updateThreeJSPose(results);
     
     // Draw body pose if enabled (on the small webcam feed)
     if (showBodyCheckbox.checked && results.poseLandmarks) {
-        // Draw pose connectors
+        // Draw pose connectors - Use the filtered POSE_CONNECTIONS
         drawConnectors(
             ctx, results.poseLandmarks, POSE_CONNECTIONS,
             {color: config.colors.body.connectors}
         );
         
-        // Draw pose landmarks
+        // Draw pose landmarks - Filter out face landmarks (0-10) for drawing
+        const bodyLandmarksOnly = results.poseLandmarks.slice(11); 
+        // Create a map for landmark indices for drawLandmarks
+        const bodyLandmarkIndices = {};
+        results.poseLandmarks.forEach((lm, index) => {
+            if (index >= 11) { // Only include non-face landmarks
+                bodyLandmarkIndices[index] = lm;
+            }
+        });
+        
         drawLandmarks(
-            ctx, results.poseLandmarks,
+            ctx, Object.values(bodyLandmarkIndices), // Pass only the non-face landmarks
             {color: config.colors.body.landmarks, radius: config.pointSizes.body}
         );
     }
     
     // Draw face if enabled (on the small webcam feed)
+    // Keep this section as is, it handles the separate detailed face tracking
     if (showFaceCheckbox.checked) {
         if (results.faceLandmarks) {
             // Draw face landmarks
@@ -219,26 +229,28 @@ function onResults(results) {
             );
         }
         
-        if (results.faceGeometry && config.modelSettings.enableFaceGeometry) {
-            // Additional face geometry visualization could be added here
-        }
-        
-        if (results.faceMesh) {
-            // Draw face mesh tesselation
+        // The MediPipe Holistic results object uses 'faceLandmarks' for the detailed mesh,
+        // not 'faceMesh'. Let's correct the drawing calls.
+        if (results.faceLandmarks) { // Check for faceLandmarks again
+            // Draw face mesh tesselation using the detailed faceLandmarks
             drawConnectors(
-                ctx, results.faceMesh, FACEMESH_TESSELATION,
+                ctx, results.faceLandmarks, FACEMESH_TESSELATION, // Use faceLandmarks here
                 {color: config.colors.face.mesh, lineWidth: 0.5}
             );
             
-            // Draw face contours
+            // Draw face contours using the detailed faceLandmarks
             drawConnectors(
-                ctx, results.faceMesh, FACEMESH_CONTOURS,
+                ctx, results.faceLandmarks, FACEMESH_CONTOURS, // Use faceLandmarks here
                 {color: config.colors.face.connectors}
             );
+        }
+         if (results.faceGeometry && config.modelSettings.enableFaceGeometry) {
+            // Additional face geometry visualization could be added here
         }
     }
     
     // Draw hands if enabled (on the small webcam feed)
+    // Keep this section as is
     if (showHandsCheckbox.checked) {
         // Left hand
         if (results.leftHandLandmarks) {
