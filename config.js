@@ -54,7 +54,6 @@ export const config = {
         rightHandColor: 0x00d9e7,
         jointRadius: 0.03,
         boneRadius: 0.015,
-        background: 0x1a1a1a,
-        armConnectorScale: 1.2 // Added scale factor for arm connectors
+        background: 0x1a1a1a
     }
 };

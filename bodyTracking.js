@@ -65,25 +65,30 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
         const joint = bodyMesh.joints[i];
         
         // Convert to 3D space, flipping coordinates as needed
-        // x is flipped to mirror the pose correctly
+        // Increase the scaling factor for X and Y to make the body larger relative to hands/face
+        const scaleFactor = 2.5; // Increased from 2
         joint.position.set(
-            -(landmark.x - 0.5) * 2, // x flipped and centered
-            (landmark.y - 0.5) * -2, // y inverted and centered
-            (landmark.z * 3) // z scaled for better visibility (increased from 2 to 3)
+            -(landmark.x - 0.5) * scaleFactor, // x flipped, centered, and scaled
+            (landmark.y - 0.5) * -scaleFactor, // y inverted, centered, and scaled
+            (landmark.z * 2) // z scaled for better visibility (keeping this multiplier for now)
         );
         
-        joint.visible = landmark.visibility > 0.5;
+        // Only make joint visible if landmark visibility is high enough
+        joint.visible = landmark.visibility > 0.5; 
     }
     
     // Update bones between joints
     for (const connection of POSE_CONNECTIONS) {
         const [i, j] = connection;
+        // Ensure the bone exists in our mesh structure
+        if (!bodyMesh.bones[connection.join('-')]) continue; 
+        
         const bone = bodyMesh.bones[connection.join('-')];
         
         const jointA = bodyMesh.joints[i];
         const jointB = bodyMesh.joints[j];
         
-        // Only show bones if both joints are visible
+        // Only show bones if both connected joints are visible
         if (jointA.visible && jointB.visible) {
             updateBoneFn(bone, jointA.position, jointB.position);
             bone.visible = true;
@@ -91,12 +96,6 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
             bone.visible = false;
         }
     }
-}
-
-// Connect arms to hand tracking data if available
-export function connectArmsToHands(bodyMesh, leftHandMesh, rightHandMesh) {
-    // Connect left arm (joint 15) to left hand wrist (joint 0) if both are visible
-    // ... existing code ...
 }
 
 // Hide body mesh
