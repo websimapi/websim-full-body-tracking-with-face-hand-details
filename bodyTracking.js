@@ -13,6 +13,21 @@ export const POSE_CONNECTIONS = [
     [30, 32], [27, 31], [28, 32]
 ];
 
+// Specific connections from wrists to fingers in the pose model
+const WRIST_TO_FINGER_CONNECTIONS = {
+    left: [[15, 17], [15, 19], [15, 21]],
+    right: [[16, 18], [16, 20], [16, 22]],
+};
+
+// Helper function to check if a connection involves wrist-to-fingers
+function isWristToFingerConnection(connection, side) {
+    const connectionsToCheck = WRIST_TO_FINGER_CONNECTIONS[side];
+    return connectionsToCheck.some(c => 
+        (c[0] === connection[0] && c[1] === connection[1]) || 
+        (c[0] === connection[1] && c[1] === connection[0])
+    );
+}
+
 // Initialize body tracking
 export function initBodyTracking(scene, THREE, config) {
     const bodyMesh = {
@@ -60,16 +75,18 @@ export function initBodyTracking(scene, THREE, config) {
 // Update body mesh with new pose data
 export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandmarks, rightHandLandmarks) {
     const scaleFactor = 2.5; // Unified scaling factor
+    const leftHandActive = leftHandLandmarks && leftHandLandmarks.length > 0;
+    const rightHandActive = rightHandLandmarks && rightHandLandmarks.length > 0;
 
     // Determine wrist positions based on hand tracking if available
-    const leftWristPos = leftHandLandmarks && leftHandLandmarks.length > 0 ? {
+    const leftWristPos = leftHandActive ? {
         x: leftHandLandmarks[0].x,
         y: leftHandLandmarks[0].y,
         z: leftHandLandmarks[0].z,
         visibility: leftHandLandmarks[0].visibility || 1 // Assume visible if hand detected
     } : null;
 
-    const rightWristPos = rightHandLandmarks && rightHandLandmarks.length > 0 ? {
+    const rightWristPos = rightHandActive ? {
         x: rightHandLandmarks[0].x,
         y: rightHandLandmarks[0].y,
         z: rightHandLandmarks[0].z,
@@ -80,15 +97,12 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandma
     for (let i = 0; i < landmarks.length; i++) {
         let landmark = landmarks[i];
         const joint = bodyMesh.joints[i];
-        let useHandWrist = false;
-
+        
         // Override wrist positions if hand data is available and visible
         if (i === 15 && leftWristPos && leftWristPos.visibility > 0.5) { // Left Wrist
             landmark = leftWristPos;
-            useHandWrist = true;
         } else if (i === 16 && rightWristPos && rightWristPos.visibility > 0.5) { // Right Wrist
             landmark = rightWristPos;
-            useHandWrist = true;
         }
 
         // Convert to 3D space, flipping coordinates as needed
@@ -98,23 +112,37 @@ export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandma
             (landmark.z * scaleFactor) // z scaled consistently
         );
         
-        // Only make joint visible if landmark visibility is high enough
-        joint.visible = landmark.visibility > 0.5; 
+        // Use original pose landmark visibility unless overridden by hand
+        const visibilityThreshold = 0.5;
+        let isVisible = (landmarks[i]?.visibility ?? 1) > visibilityThreshold; 
+        // Ensure wrist joint visibility aligns with hand tracking if active
+        if (i === 15 && leftWristPos) isVisible = leftWristPos.visibility > visibilityThreshold;
+        if (i === 16 && rightWristPos) isVisible = rightWristPos.visibility > visibilityThreshold;
+        
+        joint.visible = isVisible;
     }
     
     // Update bones between joints
     for (const connection of POSE_CONNECTIONS) {
         const [i, j] = connection;
+        const connectionKey = connection.join('-');
+        const reversedConnectionKey = `${j}-${i}`; // Check both orders
+
         // Ensure the bone exists in our mesh structure
-        if (!bodyMesh.bones[connection.join('-')]) continue; 
-        
-        const bone = bodyMesh.bones[connection.join('-')];
+        const bone = bodyMesh.bones[connectionKey] || bodyMesh.bones[reversedConnectionKey];
+        if (!bone) continue; 
         
         const jointA = bodyMesh.joints[i];
         const jointB = bodyMesh.joints[j];
+
+        // Check if this is a wrist-to-finger connection and if the corresponding hand is active
+        const skipLeftWristFingers = leftHandActive && isWristToFingerConnection(connection, 'left');
+        const skipRightWristFingers = rightHandActive && isWristToFingerConnection(connection, 'right');
         
-        // Only show bones if both connected joints are visible
-        if (jointA.visible && jointB.visible) {
+        // Hide wrist-to-finger bones if the hand mesh is active, otherwise update based on joint visibility
+        if (skipLeftWristFingers || skipRightWristFingers) {
+            bone.visible = false;
+        } else if (jointA.visible && jointB.visible) {
             updateBoneFn(bone, jointA.position, jointB.position);
             bone.visible = true;
         } else {
