@@ -140,7 +140,14 @@ function resizeCanvasToDisplaySize() {
 function updateThreeJSPose(results) {
     // Update body pose
     if (showBodyCheckbox.checked && results.poseLandmarks) {
-        updateBodyMesh(results.poseLandmarks, bodyMesh, updateBone);
+        // Pass hand landmarks to potentially override wrist positions
+        updateBodyMesh(
+            results.poseLandmarks, 
+            bodyMesh, 
+            updateBone,
+            results.leftHandLandmarks,
+            results.rightHandLandmarks
+        );
     } else {
         // Hide body mesh
         hideBodyMesh(bodyMesh);

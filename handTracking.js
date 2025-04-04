@@ -69,28 +69,43 @@ export function initHandTracking(scene, THREE, config, side) {
 
 // Update hand mesh with new landmark data
 export function updateHandMesh(landmarks, handMesh, updateBoneFn) {
+    const scaleFactor = 2.5; // Unified scaling factor
+
     // Update hand landmarks
     for (let i = 0; i < landmarks.length; i++) {
+        if (!handMesh.landmarks[i]) continue; // Should not happen if init is correct
+
         const landmark = landmarks[i];
         const joint = handMesh.landmarks[i];
         
         // Position hand landmarks in 3D space
         joint.position.set(
-            -(landmark.x - 0.5) * 2, 
-            (landmark.y - 0.5) * -2, 
-            (landmark.z * 2)
+            -(landmark.x - 0.5) * scaleFactor, 
+            (landmark.y - 0.5) * -scaleFactor, 
+            (landmark.z * scaleFactor) // Apply consistent scaling
         );
         
-        joint.visible = true;
+        // Assume hand landmarks are always visible if detected
+        joint.visible = true; 
     }
     
     // Update hand connections
     for (const connection of HAND_CONNECTIONS) {
         const [i, j] = connection;
-        const bone = handMesh.connections[connection.join('-')];
+        // Ensure bone and joints exist
+        if (!handMesh.connections[connection.join('-')] || !handMesh.landmarks[i] || !handMesh.landmarks[j]) continue;
         
-        updateBoneFn(bone, handMesh.landmarks[i].position, handMesh.landmarks[j].position);
-        bone.visible = true;
+        const bone = handMesh.connections[connection.join('-')];
+        const jointA = handMesh.landmarks[i];
+        const jointB = handMesh.landmarks[j];
+
+        // Update bone if joints are visible (which they should be if hand is detected)
+        if (jointA.visible && jointB.visible) {
+            updateBoneFn(bone, jointA.position, jointB.position);
+            bone.visible = true;
+        } else {
+            bone.visible = false; // Should not happen typically if hand is detected
+        }
     }
 }
 

@@ -58,19 +58,44 @@ export function initBodyTracking(scene, THREE, config) {
 }
 
 // Update body mesh with new pose data
-export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn) {
+export function updateBodyMesh(landmarks, bodyMesh, updateBoneFn, leftHandLandmarks, rightHandLandmarks) {
+    const scaleFactor = 2.5; // Unified scaling factor
+
+    // Determine wrist positions based on hand tracking if available
+    const leftWristPos = leftHandLandmarks && leftHandLandmarks.length > 0 ? {
+        x: leftHandLandmarks[0].x,
+        y: leftHandLandmarks[0].y,
+        z: leftHandLandmarks[0].z,
+        visibility: leftHandLandmarks[0].visibility || 1 // Assume visible if hand detected
+    } : null;
+
+    const rightWristPos = rightHandLandmarks && rightHandLandmarks.length > 0 ? {
+        x: rightHandLandmarks[0].x,
+        y: rightHandLandmarks[0].y,
+        z: rightHandLandmarks[0].z,
+        visibility: rightHandLandmarks[0].visibility || 1 // Assume visible if hand detected
+    } : null;
+
     // Scale and position the joints based on the landmarks
     for (let i = 0; i < landmarks.length; i++) {
-        const landmark = landmarks[i];
+        let landmark = landmarks[i];
         const joint = bodyMesh.joints[i];
-        
+        let useHandWrist = false;
+
+        // Override wrist positions if hand data is available and visible
+        if (i === 15 && leftWristPos && leftWristPos.visibility > 0.5) { // Left Wrist
+            landmark = leftWristPos;
+            useHandWrist = true;
+        } else if (i === 16 && rightWristPos && rightWristPos.visibility > 0.5) { // Right Wrist
+            landmark = rightWristPos;
+            useHandWrist = true;
+        }
+
         // Convert to 3D space, flipping coordinates as needed
-        // Increase the scaling factor for X and Y to make the body larger relative to hands/face
-        const scaleFactor = 2.5; // Increased from 2
         joint.position.set(
             -(landmark.x - 0.5) * scaleFactor, // x flipped, centered, and scaled
             (landmark.y - 0.5) * -scaleFactor, // y inverted, centered, and scaled
-            (landmark.z * 2) // z scaled for better visibility (keeping this multiplier for now)
+            (landmark.z * scaleFactor) // z scaled consistently
         );
         
         // Only make joint visible if landmark visibility is high enough

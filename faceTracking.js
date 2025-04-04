@@ -72,6 +72,8 @@ export function initFaceTracking(scene, THREE, config) {
 
 // Update face mesh with new landmark data
 export function updateFaceMesh(landmarks, faceMesh, updateBoneFn) {
+    const scaleFactor = 2.5; // Unified scaling factor
+
     // Update face landmarks
     for (let i = 0; i < landmarks.length; i++) {
         if (!faceMesh.landmarks[i]) continue; // Skip if landmark doesn't exist in our mesh
@@ -81,12 +83,13 @@ export function updateFaceMesh(landmarks, faceMesh, updateBoneFn) {
         
         // Position face landmarks in 3D space
         joint.position.set(
-            -(landmark.x - 0.5) * 2, 
-            (landmark.y - 0.5) * -2, 
-            (landmark.z * 2)
+            -(landmark.x - 0.5) * scaleFactor, 
+            (landmark.y - 0.5) * -scaleFactor, 
+            (landmark.z * scaleFactor) // Apply consistent scaling
         );
         
-        joint.visible = true;
+        // Assume face landmarks are always visible if detected
+        joint.visible = true; 
     }
     
     // Update face contour connections
@@ -97,9 +100,16 @@ export function updateFaceMesh(landmarks, faceMesh, updateBoneFn) {
             !faceMesh.landmarks[j]) continue;
         
         const bone = faceMesh.connections[connection.join('-')];
-        
-        updateBoneFn(bone, faceMesh.landmarks[i].position, faceMesh.landmarks[j].position);
-        bone.visible = true;
+        const jointA = faceMesh.landmarks[i];
+        const jointB = faceMesh.landmarks[j];
+
+        // Only show bones if both connected joints are visible (which they should be if face is detected)
+        if(jointA.visible && jointB.visible) {
+             updateBoneFn(bone, jointA.position, jointB.position);
+             bone.visible = true;
+        } else {
+            bone.visible = false;
+        }
     }
 }
 
